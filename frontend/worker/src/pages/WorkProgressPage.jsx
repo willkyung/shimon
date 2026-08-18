@@ -55,7 +55,7 @@ export default function WorkProgressPage({ active }) {
             <div id="workCoreTempCard" className="work-metric-card core-temp" data-level={ai?.riskLevel?.toLowerCase() || 'unavailable'}>
               <span className="work-metric-icon" aria-hidden="true"><EkgIcon /></span>
               <span className="work-metric-label">AI 추정<br />심부체온</span>
-              <strong>{ai?.predictedCoreTemperature ? `${ai.predictedCoreTemperature.toFixed(1)}℃` : '-'}</strong>
+              <strong>{ai?.estimatedCoreTempC ? `${ai.estimatedCoreTempC.toFixed(1)}℃` : '-'}</strong>
               <small>{ai?.riskLevel || '미연동'}</small>
             </div>
           </div>

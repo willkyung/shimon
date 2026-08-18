@@ -3,13 +3,14 @@ import {
   getWorkerLocationPresentation,
   WORKER_HOME_WEATHER_FALLBACK,
 } from '../data/workerHomeData';
+import { getEstimatedCoreTempLevel } from '../utils/format';
 
 export default function HomePage({ active }) {
   const {
     currentUser,
     workState,
+    currentEvaluation,
     estimatedCoreTemp,
-    coreTempState,
     startWork,
     startRest,
     showToast,
@@ -20,7 +21,22 @@ export default function HomePage({ active }) {
     : workState === 'paused'
       ? '작업 재개'
       : '작업 시작';
-  const weather = WORKER_HOME_WEATHER_FALLBACK;
+
+  // 작업 중이면 실제 AI/기상 평가값을 쓰고, 아직 작업을 시작 전(idle)이면 이 화면에서
+  // 참고할 실측값이 없어서 데모 안내값을 보여준다 (evaluate API가 진행 중인 세션에서만 동작함).
+  const liveAi = currentEvaluation?.ai;
+  const liveWeather = currentEvaluation?.weather;
+  const weather = liveWeather
+    ? {
+        temperature: liveWeather.temperature,
+        humidity: liveWeather.humidity,
+        feelsLikeTemperature: liveWeather.feelsLikeTemperature,
+        heatStatus: liveAi?.riskLevel === 'HIGH' ? '위험' : liveAi?.riskLevel === 'CAUTION' ? '주의' : '정상',
+        guidance: '체감온도·연속작업시간을 반영한 실시간 값입니다.',
+      }
+    : WORKER_HOME_WEATHER_FALLBACK;
+  const displayedCoreTemp = liveAi?.estimatedCoreTempC ?? estimatedCoreTemp;
+  const coreTempState = getEstimatedCoreTempLevel(displayedCoreTemp);
   const location = getWorkerLocationPresentation(currentUser);
 
   return (
@@ -46,7 +62,7 @@ export default function HomePage({ active }) {
             <div className="hero-main">
               <span className="card-label">현재 체감온도</span>
               <div className="temperature-line">
-                <strong className="current-temperature">{weather.feelsLikeTemperature}°C</strong>
+                <strong className="current-temperature">{weather.feelsLikeTemperature.toFixed(1)}°C</strong>
                 <span className="status-pill home-risk">{weather.heatStatus}</span>
               </div>
               <p className="hero-description">{weather.guidance}</p>
@@ -87,7 +103,7 @@ export default function HomePage({ active }) {
             </span>
 
             <span className="estimated-core-temp-reading">
-              <strong>{estimatedCoreTemp.toFixed(1)}°C</strong>
+              <strong>{displayedCoreTemp.toFixed(1)}°C</strong>
               <span>{coreTempState.label}</span>
             </span>
           </div>
