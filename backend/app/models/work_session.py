@@ -9,7 +9,9 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Identity,
     Index,
+    Integer,
     String,
     Uuid,
     desc,
@@ -54,6 +56,9 @@ class WorkSession(Base):
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    display_id: Mapped[int] = mapped_column(
+        Integer, Identity(always=False), unique=True, nullable=False
+    )
     worker_id: Mapped[UUID] = mapped_column(
         Uuid, ForeignKey("users.id"), nullable=False
     )

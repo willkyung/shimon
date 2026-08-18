@@ -9,7 +9,9 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Identity,
     Index,
+    Integer,
     String,
     UniqueConstraint,
     Uuid,
@@ -29,14 +31,18 @@ if TYPE_CHECKING:
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
-        UniqueConstraint(
-            "company_id", "employee_code", name="uq_users_company_employee"
-        ),
+        UniqueConstraint("employee_code", name="uq_users_employee_code"),
         UniqueConstraint("email", name="uq_users_email"),
+        UniqueConstraint("display_id", name="uq_users_display_id"),
         Index("ix_users_company_role_active", "company_id", "role", "is_active"),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    # API 명세(v1.2)가 "숫자형 DB id"를 요구해서 추가한 대외용 식별자.
+    # 내부 PK/FK는 계속 UUID를 쓰고, 이 컬럼은 API 응답에 노출할 때만 사용한다.
+    display_id: Mapped[int] = mapped_column(
+        Integer, Identity(always=False), nullable=False
+    )
     company_id: Mapped[UUID] = mapped_column(
         ForeignKey("companies.id"), nullable=False
     )

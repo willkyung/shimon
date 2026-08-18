@@ -55,19 +55,53 @@ def compute_continuous_work_minutes(
     return max(0, minutes)
 
 
-def score_to_risk_level(predicted_core_temp: float) -> str:
-    """예측 심부체온을 안전/주의/위험 등급으로 변환한다.
+# ai/heat_risk_model_documentation.md 근거: WHO 기준(38.0℃)에서 모델의 5-fold
+# 검증 오차(MAE 0.372℃)만큼 보수적으로 낮춘 값(주의)과, CHSWC 확장 기준(38.5℃)에
+# 근접한 값(위험). API 명세(v1.2)의 기본값(37.5/38.0)보다 이 데이터 기반 값을 우선한다.
+CORE_TEMP_CAUTION_C = 37.6
+CORE_TEMP_DANGER_C = 38.4
 
-    경계값(37.6 / 38.4)의 근거는 heat_risk_model_documentation.md 참고:
-    WHO/OSHA 기준(38.0℃)에서 모델의 5-fold 검증 오차(MAE 0.372℃)만큼
-    보수적으로 낮춰 잡은 값이다.
-    """
-    if predicted_core_temp < 37.6:
-        return "SAFE"
-    elif predicted_core_temp < 38.4:
+
+def score_to_risk_level(predicted_core_temp: float) -> str:
+    """예측 심부체온을 NORMAL/CAUTION/HIGH(coreTempLevel)로 변환한다."""
+    if predicted_core_temp < CORE_TEMP_CAUTION_C:
+        return "NORMAL"
+    elif predicted_core_temp < CORE_TEMP_DANGER_C:
         return "CAUTION"
     else:
-        return "DANGER"
+        return "HIGH"
+
+
+def compute_overall_risk_level(
+    core_temp_level: str, continuous_work_minutes: int, apparent_temp_c: float
+) -> str:
+    """
+    Rule Engine: coreTempLevel(체온 기준)만이 아니라 "체감온도 + 연속작업시간" 조합
+    규칙까지 함께 봐서 전체 위험 단계(NORMAL/CAUTION/HIGH)를 정한다.
+
+    체감온도 조건은 심부체온이 아직 CAUTION/HIGH로 안 나온 상황에서도, 더운 날 오래
+    일했으면 선제적으로 HIGH로 올리기 위한 별도 규칙이다:
+      - 체감온도 33℃ 이상 + 연속작업 120분 이상 → HIGH
+      - 체감온도 35℃ 이상 + 연속작업 60분 이상  → HIGH
+    """
+    if core_temp_level == "HIGH":
+        return "HIGH"
+    if apparent_temp_c >= 35.0 and continuous_work_minutes >= 60:
+        return "HIGH"
+    if apparent_temp_c >= 33.0 and continuous_work_minutes >= 120:
+        return "HIGH"
+    if core_temp_level == "CAUTION":
+        return "CAUTION"
+    return "NORMAL"
+
+
+def ppe_worn_to_clothing_level(ppe_worn: bool) -> str:
+    """
+    프로필의 ppeWorn(착용 여부, boolean)을 학습 데이터의 clothing 카테고리로 매핑한다.
+    PROSPIE 데이터셋엔 "미착용" 케이스가 없어서(통기성/비통기성 둘 중 하나는 항상 착용),
+    ppeWorn=False는 더 위험한 쪽인 비통기성으로 보수적으로 매핑한다.
+    """
+    return "BREATHABLE" if ppe_worn else "NON_BREATHABLE"
 
 
 # 작업강도(낮음/중간/높음) 선택값 -> 학습 데이터 gradient 대표값 매핑

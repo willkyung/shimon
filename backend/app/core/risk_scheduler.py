@@ -9,25 +9,35 @@ FastAPI 앱의 시작 시점에 백그라운드로 이 루프를 띄운다.
 
 import asyncio
 import logging
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from backend.app.core.database import SessionLocal
-from backend.app.models.enums import AiRiskLevel, WeatherSource, WorkSessionStatus
+from backend.app.models.alert import Alert
+from backend.app.models.enums import (
+    AiRiskLevel,
+    AlertStatus,
+    NotificationType,
+    OverallRiskLevel,
+    WeatherSource,
+    WorkSessionStatus,
+)
 from backend.app.models.heat_risk_assessment import HeatRiskAssessment
+from backend.app.models.notification import Notification
 from backend.app.models.site_weather_log import SiteWeatherLog
 from backend.app.models.user import User
 from backend.app.models.work_session import WorkSession
+from backend.app.services.heat_features import compute_overall_risk_level
 from backend.app.services.risk_service import MODEL_NAME, MODEL_VERSION, assess_worker_risk
-# from notification_service import send_notification
 
-# heat_features.score_to_risk_level()이 내는 값(SAFE/CAUTION/DANGER)과
-# DB의 AiRiskLevel enum(LOW/CAUTION/HIGH)은 이름이 서로 다르므로 매핑이 필요하다.
+# heat_features.score_to_risk_level()이 내는 값(NORMAL/CAUTION/HIGH)과
+# DB의 AiRiskLevel enum(LOW/CAUTION/HIGH)은 이름이 하나만 다르므로 매핑이 필요하다.
 RISK_LEVEL_TO_AI_RISK_LEVEL = {
-    "SAFE": AiRiskLevel.LOW,
+    "NORMAL": AiRiskLevel.LOW,
     "CAUTION": AiRiskLevel.CAUTION,
-    "DANGER": AiRiskLevel.HIGH,
+    "HIGH": AiRiskLevel.HIGH,
 }
 
 logger = logging.getLogger(__name__)
@@ -106,15 +116,20 @@ async def _check_all_active_workers():
 
         await asyncio.to_thread(_save_risk_assessment, session, result)
 
+        overall_level = compute_overall_risk_level(
+            result["risk_level"],
+            result["inputs"]["continuous_work_min"],
+            result["inputs"]["feels_like_temp"],
+        )
+
         previous_level = _last_known_risk_level.get(session["id"])
-        new_level = result["risk_level"]
 
         # 등급이 실제로 "올라간" 경우에만 알림 (매번 알림 보내면 스팸이 됨)
-        if _is_escalation(previous_level, new_level):
-            # send_notification(session["worker"], result)
-            logger.info(f"[알림 발송] worker={session['worker']['id']} -> {new_level}")
+        if _is_escalation(previous_level, overall_level):
+            await asyncio.to_thread(_create_escalation_records, session, result, overall_level)
+            logger.info(f"[알림 발송] worker={session['worker']['id']} -> {overall_level}")
 
-        _last_known_risk_level[session["id"]] = new_level
+        _last_known_risk_level[session["id"]] = overall_level
 
 
 def _save_risk_assessment(session: dict, result: dict) -> None:
@@ -152,8 +167,53 @@ def _save_risk_assessment(session: dict, result: dict) -> None:
         ))
 
 
+def _create_escalation_records(session: dict, result: dict, overall_level: str) -> None:
+    """
+    위험 등급이 올라간 순간에만 호출된다. 작업자용 Notification과
+    관리자용 Alert를 함께 생성한다 (둘 다 같은 사건을 다른 화면에서 보는 것뿐).
+    """
+    continuous_min = result["inputs"]["continuous_work_min"]
+    apparent_temp = result["inputs"]["feels_like_temp"]
+    if result["risk_level"] == "HIGH":
+        reason = "AI 추정 심부체온 상승"
+    elif apparent_temp >= 35.0 and continuous_min >= 60:
+        reason = "체감온도 35℃ 이상 + 연속작업 60분 초과"
+    elif apparent_temp >= 33.0 and continuous_min >= 120:
+        reason = "체감온도 33℃ 이상 + 연속작업 120분 초과"
+    else:
+        reason = "체감온도 상승"
+    level_text = {"CAUTION": "주의", "HIGH": "매우 위험"}.get(
+        overall_level, overall_level
+    )
+    worker_id = UUID(session["worker"]["id"])
+
+    with SessionLocal.begin() as db:
+        db.add(Notification(
+            user_id=worker_id,
+            type=NotificationType.REST_RECOMMENDATION,
+            title="휴식 권장 알림",
+            message="체감온도가 높아졌습니다. 지금 휴식을 권장합니다.",
+            risk_level=OverallRiskLevel(overall_level),
+        ))
+        db.add(Alert(
+            worker_id=worker_id,
+            risk_level=OverallRiskLevel(overall_level),
+            title=f"{level_text} · 즉시 휴식 필요",
+            status_text="즉시 휴식 필요" if overall_level == "HIGH" else "휴식 권장",
+            message=(
+                f"체감온도 {result['inputs']['feels_like_temp']}°C · "
+                f"AI 추정 심부체온 {result['predicted_core_temp']}°C · {reason}"
+            ),
+            apparent_temp_c=result["inputs"]["feels_like_temp"],
+            estimated_core_temp_c=result["predicted_core_temp"],
+            reason=reason,
+            occurred_at=result["assessed_at"],
+            alert_status=AlertStatus.OPEN,
+        ))
+
+
 def _is_escalation(previous: str | None, current: str) -> bool:
-    order = {"SAFE": 0, "CAUTION": 1, "DANGER": 2}
+    order = {"NORMAL": 0, "CAUTION": 1, "HIGH": 2}
     if previous is None:
-        return current != "SAFE"
+        return current != "NORMAL"
     return order[current] > order[previous]
