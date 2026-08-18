@@ -8464,3 +8464,12 @@ select:focus-visible {
     }
 }
 
+
+
+/* =========================================================
+   REACT APP ROOT COMPATIBILITY
+   기존 worker CSS 디자인은 그대로 유지하고 React root만 보정
+========================================================= */
+#root {
+    min-height: 100vh;
+}
