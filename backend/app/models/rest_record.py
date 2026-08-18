@@ -40,6 +40,7 @@ class RestRecord(Base):
             "work_session_id",
             unique=True,
             postgresql_where=text("ended_at IS NULL"),
+            sqlite_where=text("ended_at IS NULL"),
         ),
         Index(
             "uq_rest_records_active_worker",

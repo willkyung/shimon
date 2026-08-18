@@ -48,6 +48,7 @@ class WorkSession(Base):
             "worker_id",
             unique=True,
             postgresql_where=text("status = 'IN_PROGRESS'"),
+            sqlite_where=text("status = 'IN_PROGRESS'"),
         ),
         Index(
             "ix_work_sessions_worker_started_at", "worker_id", desc("started_at")

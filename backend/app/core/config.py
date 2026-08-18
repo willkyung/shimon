@@ -12,7 +12,14 @@ class Settings(BaseSettings):
     )
     jwt_secret: SecretStr | None = None
     jwt_access_token_expire_minutes: int = 60
+    admin_signup_code: SecretStr | None = None
     kma_service_key: SecretStr | None = None
+    cors_origins: list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ]
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -98,6 +98,10 @@ Purpose: worker-specific profile and site assignment; absent for Admin users.
 | `user_id` | PK and FK -> `users.id` |
 | `assigned_site_id` | FK -> `work_sites.id`, nullable until assigned |
 | `age` | Nullable constrained integer |
+| `gender` | Nullable Worker-selected display value |
+| `work_type` | Nullable MVP profile display context selected at signup |
+| `work_intensity` | Nullable server-derived MVP display value: `낮음`, `보통`, or `높음` |
+| `has_workwear` | Whether the worker selected workwear at signup |
 | `has_cooling_device` | Service/compliance context if retained by final Rule contract |
 | `created_at`, `updated_at` | Audit timestamps |
 
@@ -110,7 +114,7 @@ Constraints and indexes:
 - Application validation ensures the referenced user has role `WORKER`.
 - **TODO / NOT FROZEN:** final profile fields after privacy and AI feature-schema review.
 
-Profile fields are service context only. Their presence does not prove that the trained AI uses them.
+Profile fields are service context only. Their presence does not prove that the trained AI uses them. The MVP `work_type` to `work_intensity` mapping is not a legal/compliance rule.
 
 ## `work_sites`
 
