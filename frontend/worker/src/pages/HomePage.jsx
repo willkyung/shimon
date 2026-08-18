@@ -26,12 +26,20 @@ export default function HomePage({ active }) {
   // 참고할 실측값이 없어서 데모 안내값을 보여준다 (evaluate API가 진행 중인 세션에서만 동작함).
   const liveAi = currentEvaluation?.ai;
   const liveWeather = currentEvaluation?.weather;
+
+  // 체감온도 배지는 AI 종합 위험도(riskLevel)가 아니라 체감온도 수치 자체로 판정한다.
+  function heatStatusFromApparentTemp(feelsLikeTemperature) {
+    if (feelsLikeTemperature >= 33) return '위험';
+    if (feelsLikeTemperature >= 31) return '주의';
+    return '관심';
+  }
+
   const weather = liveWeather
     ? {
         temperature: liveWeather.temperature,
         humidity: liveWeather.humidity,
         feelsLikeTemperature: liveWeather.feelsLikeTemperature,
-        heatStatus: liveAi?.riskLevel === 'HIGH' ? '위험' : liveAi?.riskLevel === 'CAUTION' ? '주의' : '정상',
+        heatStatus: heatStatusFromApparentTemp(liveWeather.feelsLikeTemperature),
         guidance: '체감온도·연속작업시간을 반영한 실시간 값입니다.',
       }
     : WORKER_HOME_WEATHER_FALLBACK;
