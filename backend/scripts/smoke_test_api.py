@@ -86,55 +86,63 @@ def main() -> None:
     check("GET /users/me (worker)", r.status_code == 200 and r.json().get("role") == "WORKER", r.text)
 
     # ------------------------------------------------------------------
-    # 4. Worker 핵심 플로우 — 작업 시작 -> 안전값 -> 휴식 -> 종료
+    # 4. Worker 핵심 플로우(팀원의 work_sessions.py 기준) — 작업 시작 -> AI/컴플라이언스
+    #    평가 -> 휴식 시작 -> 휴식 종료(자동으로 다음 세션 시작됨) -> 작업 종료
     # ------------------------------------------------------------------
-    r = session.get(f"{BASE_URL}/worker/home", headers=worker_headers)
-    check("GET /worker/home", r.status_code == 200 and "safety" in r.json(), r.text)
+    r = session.get(f"{BASE_URL}/me/work-session/current", headers=worker_headers)
+    check("GET /me/work-session/current", r.status_code == 200, r.text)
+    existing = (r.json() or {}).get("data")
+    if existing:
+        session.post(f"{BASE_URL}/work-sessions/{existing['id']}/end", headers=worker_headers)
 
-    # 혹시 이미 진행 중인 세션이 있으면 먼저 정리
-    r = session.get(f"{BASE_URL}/worker/work-sessions/current", headers=worker_headers)
-    if r.status_code == 200:
-        existing_id = r.json()["id"]
-        session.post(f"{BASE_URL}/worker/work-sessions/{existing_id}/end", headers=worker_headers)
+    import subprocess
+    site_id = subprocess.run(
+        ["docker", "exec", "shimon-postgres", "psql", "-U", "postgres", "-d", "shimon", "-t", "-c",
+         "SELECT wp.assigned_site_id FROM worker_profiles wp JOIN users u ON u.id = wp.user_id WHERE u.employee_code = 'HB-W001';"],
+        capture_output=True, text=True,
+    ).stdout.strip()
+    check("resolved worker's assigned_site_id from DB", bool(site_id), site_id)
 
-    r = session.post(f"{BASE_URL}/worker/work-sessions", headers=worker_headers, json={})
-    check("POST /worker/work-sessions", r.status_code == 201, r.text)
-    work_session_id = r.json().get("id")
-    check("work session has numeric id", isinstance(work_session_id, int))
+    r = session.post(f"{BASE_URL}/work-sessions", headers=worker_headers, json={
+        "siteId": site_id, "workType": "토목 작업", "workIntensity": "MEDIUM",
+        "clothingLevel": "STANDARD", "environment": "OUTDOOR",
+    })
+    check("POST /work-sessions", r.status_code == 201, r.text)
+    work_session_id = r.json().get("data", {}).get("id")
+    ai_block = r.json().get("data", {}).get("latestEvaluation", {}).get("ai")
+    check("work session start includes AI evaluation (XGBoost 연동 확인)", ai_block is not None, r.text)
 
-    r = session.get(f"{BASE_URL}/worker/safety/current", headers=worker_headers)
+    r = session.post(f"{BASE_URL}/work-sessions/{work_session_id}/evaluate", headers=worker_headers)
     check(
-        "GET /worker/safety/current returns riskLevel",
-        r.status_code == 200 and r.json().get("riskLevel") in ("NORMAL", "CAUTION", "HIGH"),
+        "POST /work-sessions/{id}/evaluate returns ai.riskLevel",
+        r.status_code == 200 and r.json().get("data", {}).get("ai", {}).get("riskLevel") in ("NORMAL", "CAUTION", "HIGH"),
         r.text,
     )
 
-    r = session.post(f"{BASE_URL}/worker/rest-sessions", headers=worker_headers, json={
-        "workSessionId": work_session_id, "reason": "USER_STARTED",
-    })
-    check("POST /worker/rest-sessions", r.status_code == 201, r.text)
-    rest_id = r.json().get("id")
+    r = session.post(f"{BASE_URL}/work-sessions/{work_session_id}/rests/start", headers=worker_headers)
+    check("POST /work-sessions/{id}/rests/start", r.status_code == 201, r.text)
+    rest_id = r.json().get("data", {}).get("restId")
 
-    r = session.get(f"{BASE_URL}/worker/rest-sessions/current", headers=worker_headers)
-    check("GET /worker/rest-sessions/current", r.status_code == 200, r.text)
+    r = session.post(f"{BASE_URL}/rests/{rest_id}/end", headers=worker_headers)
+    check(
+        "POST /rests/{id}/end (다음 작업세션 자동 시작 + AI 재평가)",
+        r.status_code == 200 and r.json().get("data", {}).get("evaluation", {}).get("ai") is not None,
+        r.text,
+    )
+    resumed_session_id = r.json().get("data", {}).get("workSessionId")
 
-    r = session.post(f"{BASE_URL}/worker/rest-sessions/{rest_id}/end", headers=worker_headers)
-    check("POST /worker/rest-sessions/{id}/end", r.status_code == 200 and r.json().get("status") == "COMPLETED", r.text)
-
-    r = session.post(f"{BASE_URL}/worker/work-sessions/{work_session_id}/end", headers=worker_headers)
-    check("POST /worker/work-sessions/{id}/end", r.status_code == 200 and r.json().get("status") == "COMPLETED", r.text)
+    r = session.post(f"{BASE_URL}/work-sessions/{resumed_session_id}/end", headers=worker_headers)
+    check("POST /work-sessions/{id}/end", r.status_code == 200, r.text)
 
     # ------------------------------------------------------------------
-    # 5. Worker 기록/알림
+    # 5. Worker 기록 (알림 조회 API는 현재 없음 - admin.py가 만드는 Notification을
+    #    worker가 직접 조회하는 엔드포인트는 아직 없어서 DB로 직접 확인한다. 아래 참고)
     # ------------------------------------------------------------------
-    r = session.get(f"{BASE_URL}/worker/records?type=all&page=1&size=20", headers=worker_headers)
-    check("GET /worker/records", r.status_code == 200 and "items" in r.json(), r.text)
+    r = session.get(f"{BASE_URL}/me/work-sessions", headers=worker_headers)
+    check("GET /me/work-sessions", r.status_code == 200 and "data" in r.json(), r.text)
 
-    r = session.get(f"{BASE_URL}/worker/notifications", headers=worker_headers)
-    check("GET /worker/notifications", r.status_code == 200 and "unreadCount" in r.json(), r.text)
-
-    r = session.get(f"{BASE_URL}/worker/notification-settings", headers=worker_headers)
-    check("GET /worker/notification-settings", r.status_code == 200, r.text)
+    r = session.get(f"{BASE_URL}/me/rest-records", headers=worker_headers)
+    check("GET /me/rest-records", r.status_code == 200 and "data" in r.json(), r.text)
 
     # ------------------------------------------------------------------
     # 6. Admin — dashboard / workers / alerts / settings / sites
@@ -162,10 +170,14 @@ def main() -> None:
         )
         check("POST /admin/workers/{id}/rest-alert", r.status_code == 201, r.text)
 
-        # 방금 보낸 알림이 worker 알림함에 실제로 들어갔는지 -> DB round-trip 검증
-        r = session.get(f"{BASE_URL}/worker/notifications", headers=worker_headers)
-        titles = [n["title"] for n in r.json().get("items", [])]
-        check("admin rest-alert가 worker notifications에 실제로 반영됨", "관리자 휴식 권고" in titles)
+        # 방금 보낸 알림이 DB에 실제로 들어갔는지 확인 (worker가 직접 조회하는 API는 아직 없음)
+        import subprocess
+        latest_title = subprocess.run(
+            ["docker", "exec", "shimon-postgres", "psql", "-U", "postgres", "-d", "shimon", "-t", "-c",
+             "SELECT title FROM notifications ORDER BY created_at DESC LIMIT 1;"],
+            capture_output=True, text=True,
+        ).stdout.strip()
+        check("admin rest-alert가 DB notifications 테이블에 실제로 반영됨", latest_title == "관리자 휴식 권고", latest_title)
 
     r = session.get(f"{BASE_URL}/admin/alerts", headers=admin_headers)
     check("GET /admin/alerts", r.status_code == 200 and "items" in r.json(), r.text)

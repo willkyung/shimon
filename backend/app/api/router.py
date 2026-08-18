@@ -3,7 +3,7 @@ from typing import Literal
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from backend.app.api.routes import admin_router, auth_router, users_router, worker_router
+from backend.app.api.routes import admin_router, auth_router, users_router, work_sessions_router
 
 
 class HealthData(BaseModel):
@@ -18,7 +18,7 @@ class HealthResponse(BaseModel):
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth_router)
 api_router.include_router(users_router)
-api_router.include_router(worker_router)
+api_router.include_router(work_sessions_router)
 api_router.include_router(admin_router)
 
 
