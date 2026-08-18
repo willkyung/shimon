@@ -3257,3 +3257,338 @@ svg {
     }
 }
 
+/* =========================================================
+   ALERT READABILITY V2
+   - 3단계 정보 위계: 이름/위험도 -> 핵심 수치 -> 사유/시간
+   - 위험 알림 화면에만 적용
+========================================================= */
+
+.alert-timeline {
+    margin-top: 14px;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+    display: grid;
+    gap: 12px;
+    background: transparent;
+    box-shadow: none;
+}
+
+.alert-item {
+    --alert-accent: var(--amber);
+    position: relative;
+    min-height: 150px;
+    padding: 20px 20px 20px 24px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 200px;
+    align-items: stretch;
+    gap: 22px;
+    overflow: hidden;
+    background: #FFFFFF;
+    box-shadow: 0 8px 24px rgba(27, 42, 86, 0.055);
+    transition:
+        transform 0.16s ease,
+        box-shadow 0.16s ease,
+        border-color 0.16s ease,
+        background 0.16s ease;
+}
+
+.alert-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 14px;
+    bottom: 14px;
+    width: 4px;
+    border-radius: 0 999px 999px 0;
+    background: var(--alert-accent);
+}
+
+.alert-item.risk-critical,
+.alert-item.danger {
+    --alert-accent: var(--danger);
+    background:
+        linear-gradient(90deg, rgba(199, 85, 91, 0.050), transparent 34%),
+        #FFFFFF;
+}
+
+.alert-item.risk-caution,
+.alert-item.caution {
+    --alert-accent: var(--amber);
+    background:
+        linear-gradient(90deg, rgba(214, 162, 74, 0.045), transparent 34%),
+        #FFFFFF;
+}
+
+.alert-item.risk-watch {
+    --alert-accent: var(--blue);
+}
+
+.alert-item.risk-safe {
+    --alert-accent: var(--green);
+}
+
+.alert-item:hover {
+    transform: translateY(-1px);
+    border-color: #D7E0EA;
+    box-shadow: 0 14px 32px rgba(27, 42, 86, 0.085);
+}
+
+.alert-item:last-child {
+    border-bottom: 1px solid var(--line);
+}
+
+/* 기존 좌측 경고 아이콘은 새 정보 위계에서 사용하지 않음 */
+.alert-icon {
+    display: none;
+}
+
+.alert-main {
+    min-width: 0;
+    display: grid;
+    align-content: center;
+    gap: 14px;
+}
+
+.alert-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.alert-identity {
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.alert-worker-name {
+    flex: 0 0 auto;
+    color: var(--ink);
+    font-size: 16px !important;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+}
+
+.alert-status-text {
+    min-width: 0;
+    overflow: hidden;
+    color: #738096;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.alert-risk-badge {
+    flex: 0 0 auto;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
+.alert-risk-badge.critical {
+    background: var(--danger);
+    color: #FFFFFF;
+    box-shadow: 0 6px 16px rgba(199, 85, 91, 0.16);
+}
+
+.alert-risk-badge.caution {
+    background: var(--amber-soft);
+    color: #946B2A;
+}
+
+.alert-risk-badge.watch {
+    background: var(--navy-soft);
+    color: #4D74AC;
+}
+
+.alert-risk-badge.safe {
+    background: var(--green-soft);
+    color: #3B8464;
+}
+
+/* 핵심 수치는 별도 pill 여러 개 대신 하나의 그룹으로 통합 */
+.alert-vitals {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+    gap: 8px;
+}
+
+.alert-vital {
+    min-height: 58px;
+    padding: 10px 13px;
+    border: 1px solid #E8EDF3;
+    border-radius: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    background: rgba(248, 250, 252, 0.86);
+}
+
+.alert-vital span {
+    color: #7C899C;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.alert-vital span b {
+    display: inline-flex;
+    margin-right: 4px;
+    padding: 2px 5px;
+    border-radius: 999px;
+    background: linear-gradient(
+        135deg,
+        rgba(81, 183, 134, 0.14),
+        rgba(75, 127, 209, 0.14)
+    );
+    color: #4D76AB;
+    font-size: 8px;
+    font-weight: 800;
+}
+
+.alert-vital strong {
+    flex: 0 0 auto;
+    color: var(--navy);
+    font-size: 22px !important;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.045em;
+}
+
+.alert-vital.apparent.caution strong {
+    color: #B97B25;
+}
+
+.alert-vital.apparent.danger strong,
+.alert-vital.core.high strong {
+    color: var(--danger);
+}
+
+.alert-vital.core.normal strong {
+    color: #378666;
+}
+
+.alert-vital.core.caution strong {
+    color: #B97B25;
+}
+
+.alert-reason-row {
+    min-height: 22px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+}
+
+.alert-reason-row > span {
+    padding-top: 1px;
+    color: #9AA4B2;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.alert-reason-row p {
+    margin: 0 !important;
+    color: #66758B;
+    font-size: 11px !important;
+    font-weight: 500;
+    line-height: 1.55;
+}
+
+/* 우측은 발생 시각 + 행동만 배치해서 좌우 균형 확보 */
+.alert-side {
+    padding-left: 20px;
+    border-left: 1px solid #E8EDF3;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    gap: 14px;
+}
+
+.alert-time-block {
+    display: grid;
+    justify-items: end;
+    gap: 4px;
+}
+
+.alert-time-block span {
+    color: #9AA4B2;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.alert-time-block time,
+.alert-meta time {
+    margin: 0;
+    color: var(--navy);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.alert-side button {
+    width: 100%;
+    min-height: 40px;
+    padding: 0 13px;
+    border: 1px solid #DCE3EC;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: #FFFFFF;
+    color: #5E6E84;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.alert-side button svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.alert-item.danger .alert-side button {
+    border-color: transparent;
+    background: var(--danger);
+    color: #FFFFFF;
+    box-shadow: 0 8px 18px rgba(199, 85, 91, 0.14);
+}
+
+.alert-item.caution .alert-side button {
+    border-color: rgba(214, 162, 74, 0.28);
+    background: #FFFDF8;
+    color: #8D682C;
+}
+
+@media (max-width: 1320px) {
+    .alert-item {
+        grid-template-columns: minmax(0, 1fr) 170px;
+        gap: 16px;
+    }
+
+    .alert-vital strong {
+        font-size: 19px !important;
+    }
+}
+
