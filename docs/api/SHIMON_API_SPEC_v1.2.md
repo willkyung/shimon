@@ -1,7 +1,7 @@
-# SHIMON API 명세서 v1.1
+# SHIMON API 명세서 v1.2
 
 **목적**: React로 전환된 `frontend/worker`, `frontend/admin`과 공통 FastAPI 백엔드를 연결하기 위한 API 계약서  
-**기준**: 최신 Worker React 구조 + 최신 Admin React UI/상태 구조 대조 반영  
+**기준**: 최신 Worker React + Admin React 실제 UI/상태 구조 대조 반영  
 **Base URL**: `http://localhost:8000/api/v1`  
 **인증**: JWT Bearer Token  
 **응답**: JSON / camelCase  
@@ -185,6 +185,7 @@ Admin 예시:
   "gender": "MALE",
   "phone": "010-1234-5678",
   "email": "worker@shimon.com",
+  "gender": "MALE",
   "age": 42,
   "jobType": "토목 작업",
   "workplace": "부산 북항 현장",
@@ -193,6 +194,13 @@ Admin 예시:
   "password": "1234"
 }
 ```
+
+Worker React 연동 규칙:
+
+- 현재 UI의 `uniform` 값은 API 전송 시 `ppeWorn` boolean으로 변환한다.
+  - `착용` → `true`
+  - `미착용` → `false`
+- 현재 Worker React에서 작업 강도를 직접 선택하지 않는 경우 `workIntensity`는 생략 가능하며, 서버 기본값은 `MEDIUM`으로 처리한다.
 
 ### Admin Request
 
@@ -256,7 +264,13 @@ Admin 예시:
 }
 ```
 
-> 현재 Admin React 프로토타입은 이름 로그인도 허용하지만, 실제 API에서는 중복 가능성이 있는 이름 로그인은 사용하지 않는 것을 권장한다.
+> 현재 Worker/Admin React 프로토타입은 이름 로그인 흐름이 남아 있을 수 있으나, 실제 API 연동에서는 중복 가능성이 있는 이름 대신 `사원코드 또는 이메일 + 비밀번호`를 사용한다.
+
+Worker React 로그인 화면 권장 변경:
+
+```text
+이름 → 사원코드 또는 이메일
+```
 
 ---
 
@@ -343,11 +357,19 @@ Worker 작업 정보/연락처 수정.
 {
   "phone": "010-9999-9999",
   "email": "worker@shimon.com",
+  "gender": "MALE",
   "jobType": "토목 작업",
   "workplace": "부산 북항 현장",
   "workIntensity": "HIGH",
   "ppeWorn": true
 }
+```
+
+Worker React 프로필 매핑:
+
+```text
+gender: MALE/FEMALE/OTHER → 남성/여성/기타
+ppeWorn: true/false       → uniform: 착용/미착용
 ```
 
 ---
@@ -392,6 +414,8 @@ Worker 홈에서 필요한 값을 한 번에 조회한다.
 }
 ```
 
+> Worker React의 Home/Work 화면에 남아 있는 체감온도·위험도 하드코딩 값은 API 연동 후 `environment.apparentTempC`, `safety.riskLevel`, `safety.estimatedCoreTempC`, `safety.coreTempLevel`을 사용한다.
+
 ---
 
 ## GET `/worker/safety/current`
@@ -412,6 +436,8 @@ Worker 홈에서 필요한 값을 한 번에 조회한다.
 ```
 
 MVP는 30~60초 polling 권장.
+
+> 위험도와 AI 추정 심부체온 단계는 서버 응답을 화면의 기준값으로 사용한다. Worker React에서 `37.5 / 38.0`을 다시 하드코딩해 별도 판정하지 않는다.
 
 ---
 
@@ -492,6 +518,25 @@ MVP는 30~60초 polling 권장.
   "reason": "USER_STARTED"
 }
 ```
+
+작업 중이 아닌 상태에서 사용자가 홈 화면의 `휴식 시작`을 누르는 경우:
+
+```json
+{
+  "workSessionId": null,
+  "reason": "USER_STARTED"
+}
+```
+
+`workSessionId` 타입:
+
+```text
+number | null
+```
+
+- 작업 중 휴식: 현재 작업 세션 ID 전달
+- 독립 휴식: `null`
+
 
 `reason`:
 
@@ -580,6 +625,21 @@ size=20
 }
 ```
 
+### REST Item 예시
+
+```json
+{
+  "id": 202,
+  "type": "REST",
+  "startedAt": "2026-08-18T14:05:00+09:00",
+  "endedAt": "2026-08-18T14:25:00+09:00",
+  "durationMinutes": 20,
+  "averageApparentTempC": 35.0,
+  "maxEstimatedCoreTempC": 37.8,
+  "riskLevel": "CAUTION"
+}
+```
+
 ---
 
 ## GET `/worker/records/summary?date=2026-08-18`
@@ -599,6 +659,12 @@ size=20
 ---
 
 # 8. Worker Notifications
+
+알림 타입:
+
+- `REST_RECOMMENDATION`
+- `ADMIN_REST_REQUEST`
+- `WORK_STARTED`
 
 ## GET `/worker/notifications`
 
@@ -629,6 +695,33 @@ size=20
   "read": true
 }
 ```
+
+---
+
+## POST `/worker/notifications/{id}/snooze`
+
+Worker React의 `5분 후 다시 알림` 기능에 사용한다.
+
+### Request
+
+```json
+{
+  "minutes": 5
+}
+```
+
+### Response
+
+```json
+{
+  "notificationId": 501,
+  "snoozedUntil": "2026-08-18T14:15:00+09:00"
+}
+```
+
+> 현재 RestAlert 화면에서 보여주는 최신 체감온도/AI 추정 심부체온은 알림 객체에 고정 저장된 값을 다시 쓰기보다 `/worker/safety/current`를 재조회해 표시하는 것을 권장한다.
+
+> 프로토타입의 `setTimeout(..., 5000)`은 5초이므로, API 연동 전 임시 로직을 유지한다면 5분은 `5 * 60 * 1000`으로 수정한다.
 
 ---
 
@@ -702,7 +795,7 @@ Admin React Dashboard에서 사용하는 상태 카운트, AI 추정 심부체�
   ],
   "priorityWorkers": [
     {
-      "workerId": "W007",
+      "workerId": 7,
       "name": "윤지호",
       "site": "미포 현장 A구역",
       "status": "REST_NEEDED",
@@ -755,7 +848,7 @@ size=50
 {
   "items": [
     {
-      "id": "W001",
+      "id": 1,
       "employeeCode": "HB-W001",
       "name": "김민준",
       "jobType": "건설 작업",
@@ -800,7 +893,7 @@ riskLevel               → safe/watch/caution/critical 변환
 
 ```json
 {
-  "id": "W001",
+  "id": 1,
   "employeeCode": "HB-W001",
   "name": "김민준",
   "company": "한빛건설",
@@ -846,7 +939,7 @@ size=50
   "items": [
     {
       "id": 7001,
-      "workerId": "W007",
+      "workerId": 7,
       "workerName": "윤지호",
       "riskLevel": "HIGH",
       "title": "매우 위험 · 즉시 휴식 필요",
@@ -893,7 +986,7 @@ size=50
 ```json
 {
   "notificationId": 9001,
-  "workerId": "W007",
+  "workerId": 7,
   "type": "ADMIN_REST_REQUEST",
   "sentAt": "2026-08-18T14:43:00+09:00"
 }
@@ -1070,7 +1163,27 @@ Admin React의 현재 하드코딩:
 
 ---
 
-# 15. React 연결 매핑
+# 15. ID 타입 정책
+
+공통 사용자/노동자 식별자는 DB 기준 숫자형 `id`를 사용한다.
+
+```json
+{
+  "id": 12,
+  "employeeCode": "HB-W001"
+}
+```
+
+규칙:
+
+- `id`: 서버/DB 내부 식별자, `number`
+- `employeeCode`: 사용자에게 보이는 사원코드, `string`
+- Admin 휴식 알림/노동자 상세/Alert 연결은 `workerId` 숫자값을 사용한다.
+- 이름은 식별자로 사용하지 않는다.
+
+---
+
+# 16. React 연결 매핑
 
 ## Worker
 
@@ -1093,7 +1206,20 @@ Admin React의 현재 하드코딩:
 | 기록 요약 | `GET /worker/records/summary` |
 | 알림 | `GET /worker/notifications` |
 | 알림 읽음 | `PATCH /worker/notifications/{id}/read` |
+| 5분 후 다시 알림 | `POST /worker/notifications/{id}/snooze` |
 | 알림 설정 | `GET/PATCH /worker/notification-settings` |
+
+## Worker React에서 API 연동 시 바꿀 부분
+
+1. 로그인 입력을 이름이 아닌 `사원코드 또는 이메일` 기준으로 변경
+2. 회원가입/프로필의 `uniform` ↔ API `ppeWorn` 변환
+3. `gender`를 `MALE/FEMALE/OTHER`와 화면 한글값 사이에서 변환
+4. Home/Work의 체감온도·위험도 하드코딩 제거
+5. 위험도/AI 추정 심부체온 단계는 서버의 `riskLevel`, `coreTempLevel` 사용
+6. 독립 휴식 시작 시 `workSessionId: null` 허용
+7. `snoozeRestAlert()` → `POST /worker/notifications/{id}/snooze`
+8. Admin 설정을 localStorage로 공유하지 않고 서버 설정/안전 API 결과를 사용
+9. `5분 후 다시 알림` 임시 타이머가 남아 있다면 `5000ms`가 아닌 실제 5분으로 수정
 
 ## Admin
 
@@ -1126,7 +1252,7 @@ Admin React의 현재 하드코딩:
 
 ---
 
-# 16. Frontend API 폴더
+# 17. Frontend API 폴더
 
 ```text
 frontend/
@@ -1145,6 +1271,22 @@ frontend/
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000/api/v1
+```
+
+## Worker adapter 예시
+
+```js
+export function toWorkerProfilePayload(form) {
+  return {
+    phone: form.phone,
+    email: form.email,
+    gender: form.gender,
+    jobType: form.jobType,
+    workplace: form.workplace,
+    workIntensity: form.workIntensity || 'MEDIUM',
+    ppeWorn: form.uniform === '착용',
+  };
+}
 ```
 
 ## Admin adapter 예시
@@ -1197,7 +1339,7 @@ export function mapAdminWorker(item) {
 
 ---
 
-# 17. CSV 내보내기
+# 18. CSV 내보내기
 
 현재 Admin React는 브라우저에서 `siteWorkers`를 CSV로 생성한다.
 
@@ -1211,7 +1353,7 @@ MVP에서는 현재 방식 유지 가능.
 
 ---
 
-# 18. 구현 순서
+# 19. 구현 순서
 
 ## Phase 1 — Auth
 
@@ -1239,6 +1381,7 @@ GET  /worker/records
 GET  /worker/records/summary
 GET  /worker/notifications
 PATCH /worker/notifications/{id}/read
+POST /worker/notifications/{id}/snooze
 GET/PATCH /worker/notification-settings
 ```
 
@@ -1269,7 +1412,7 @@ Weather API
 
 ---
 
-# 19. Polling 권장
+# 20. Polling 권장
 
 ## Worker
 
@@ -1290,7 +1433,7 @@ MVP 이후 실시간성이 더 필요하면 SSE 또는 WebSocket으로 전환한
 
 ---
 
-# 20. 통합 테스트
+# 21. 통합 테스트
 
 ## Worker
 
@@ -1299,6 +1442,8 @@ MVP 이후 실시간성이 더 필요하면 SSE 또는 WebSocket으로 전환한
 → 홈 조회
 → 작업 시작
 → 안전값 갱신
+→ 휴식 권장 알림 수신
+→ (선택) 5분 후 다시 알림
 → 휴식 시작
 → 휴식 종료
 → 작업 종료
@@ -1328,7 +1473,7 @@ Admin 기준값 수정
 
 ---
 
-# 21. 현재 SHIMON 기본값
+# 22. 현재 SHIMON 기본값
 
 ```text
 API prefix              /api/v1
@@ -1343,23 +1488,26 @@ Admin dashboard polling 30초
 
 ---
 
-# 22. v1.0 → v1.1 변경사항
+# 23. v1.1 → v1.2 변경사항
 
-1. Admin React 실제 상태값에 맞춰 `WATCH` 위험 단계 추가
-2. `riskLevel`과 `coreTempLevel`을 분리해 의미 명확화
-3. Admin 회원가입 `verificationToken` 흐름 명확화
-4. Dashboard에 `currentApparentTempC`, `restComplianceRate`, `apparentTempTrend` 추가
-5. Admin Workers에 최근 작업 시작/종료 시간 필드 추가
-6. 노동자 상태/위험도/PPE의 React adapter 매핑 정의
-7. 관리자 휴식 알림을 `workerName`이 아닌 `workerId` 기준으로 확정
-8. Admin Alert 응답에 화면 표시용 `title`, `message`, 온도값 추가
-9. Admin Settings API ↔ 현재 React 필드명 매핑 명시
-10. `/sites` 응답 구조 정의
-11. CSV 내보내기는 MVP 클라이언트 방식 유지, 추후 export API 검토
-12. Auth refresh/logout 응답 예시 보강
+1. Worker `/users/me` 응답에 `gender` 추가
+2. Worker `PATCH /users/me`에 `gender` 수정 지원 추가
+3. Worker React `uniform` ↔ API `ppeWorn` 변환 규칙 명시
+4. Worker 회원가입 `workIntensity` 생략 시 서버 기본값 `MEDIUM` 명시
+5. Worker 로그인은 이름 대신 사원코드/이메일 기준으로 정리
+6. Home/Work 하드코딩 안전값을 서버 응답으로 대체하도록 명시
+7. 위험도/AI 추정 심부체온 단계의 서버 기준 원칙 명시
+8. 독립 휴식을 위해 `workSessionId: null` 허용
+9. Worker 알림 타입 `REST_RECOMMENDATION`, `ADMIN_REST_REQUEST`, `WORK_STARTED` 정의
+10. `POST /worker/notifications/{id}/snooze` 추가
+11. Worker 기록의 REST item 응답 예시 추가
+12. Worker/Admin 공통 `id`를 숫자형 DB ID로 통일
+13. 이름을 식별자로 사용하지 않고 `workerId`로 연결하도록 명확화
+14. Worker React API 연동 시 수정 포인트와 adapter 예시 추가
+15. Admin v1.1 변경사항은 그대로 유지
 
 ---
 
 ## 문서 버전
 
-`SHIMON API Contract v1.1`
+`SHIMON API Contract v1.2`
