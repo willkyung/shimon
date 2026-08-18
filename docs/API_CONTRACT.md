@@ -46,12 +46,11 @@ aiRiskLevel: LOW | CAUTION | HIGH
 
 ### `POST /api/v1/auth/signup`
 
-Creates a minimal Worker or Admin account.
+Creates a Worker account. The server generates a company-local employee code.
 
 ```json
 {
-  "companyCode": "EST-2026",
-  "employeeCode": "W001",
+  "companyName": "SHIMON Company",
   "email": "worker1@example.com",
   "password": "password123",
   "name": "Kim Worker",
@@ -59,7 +58,9 @@ Creates a minimal Worker or Admin account.
   "role": "WORKER",
   "workerProfile": {
     "age": 29,
-    "assignedSiteId": "site-1"
+    "workArea": "서울 A구역",
+    "workType": "토목 작업",
+    "hasWorkwear": true
   }
 }
 ```
@@ -69,20 +70,22 @@ Creates a minimal Worker or Admin account.
   "success": true,
   "data": {
     "userId": "user-10",
+    "employeeCode": "W12AB34CD5",
     "name": "Kim Worker",
     "role": "WORKER"
   }
 }
 ```
 
-`workerProfile` is required for `WORKER` and omitted for `ADMIN`. Authorization rules for who may assign the `ADMIN` role are **TODO / NOT FROZEN**.
+`workerProfile` is required for `WORKER`. Public `ADMIN` signup is rejected. `companyName` and `workArea` must match an existing company and work area, case-insensitively.
+
+For the MVP demonstration, the backend derives the profile display value `workIntensity` from `workType`: `순찰·점검 → 낮음`, `토목 작업/건설 작업 → 보통`, and `도로 작업/중량물 운반 → 높음`. This mapping is profile presentation context only; it is not a compliance decision and is not claimed as a trained-model feature.
 
 ### `POST /api/v1/auth/login`
 
 ```json
 {
-  "companyCode": "EST-2026",
-  "employeeCode": "W001",
+  "email": "worker1@example.com",
   "password": "password123"
 }
 ```
@@ -113,13 +116,38 @@ Returns the authenticated user and, for a worker, their profile/site assignment.
     "id": "user-10",
     "name": "Kim Worker",
     "role": "WORKER",
+    "companyCode": "EST-2026",
+    "companyName": "SHIMON Company",
+    "employeeCode": "W001",
+    "email": "worker1@example.com",
+    "phone": "01012345678",
     "workerProfile": {
       "age": 29,
+      "workType": "토목 작업",
+      "workIntensity": "보통",
+      "hasWorkwear": true,
       "assignedSite": {"id": "site-1", "name": "Gangnam Site"}
     }
   }
 }
 ```
+
+### `PATCH /api/v1/me`
+
+Updates the authenticated Worker's editable personal and work-profile information. The backend resolves `workArea` within the Worker's current company and derives `workIntensity` from `workType`; clients cannot submit an independent intensity value.
+
+```json
+{
+  "email": "worker.updated@example.com",
+  "phone": "010-3333-3333",
+  "gender": "남성",
+  "workArea": "서울 B구역",
+  "workType": "중량물 운반",
+  "hasWorkwear": false
+}
+```
+
+Returns the same `MeResponse` shape as `GET /api/v1/me`. Duplicate email returns `EMAIL_ALREADY_EXISTS`; a work area outside the current company returns `SITE_NOT_FOUND`.
 
 ## Sites and weather
 

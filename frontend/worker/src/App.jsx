@@ -18,7 +18,11 @@ import NotificationsPage from './pages/NotificationsPage';
 const AUTH_SCREENS = ['welcome', 'login', 'signup'];
 
 export default function App() {
-  const { screen } = useWorker();
+  const { screen, authRestoring } = useWorker();
+
+  if (authRestoring) {
+    return <div className="worker-app"><div className="phone-shell"><main className="worker-main"><section className="screen active splash-screen"><div className="splash-content"><p className="splash-eyebrow">SHIMON</p><h1>로그인 상태를 확인하고 있습니다.</h1></div></section></main></div></div>;
+  }
 
   const showHeader = !AUTH_SCREENS.includes(screen) && screen !== 'rest-alert';
   const showBottomNav =

@@ -40,6 +40,7 @@ def get_current_user(
     user = db.scalar(
         select(User)
         .options(
+            selectinload(User.company),
             selectinload(User.worker_profile).selectinload(
                 WorkerProfile.assigned_site
             )

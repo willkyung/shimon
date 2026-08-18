@@ -1,57 +1,99 @@
+import { useState } from 'react';
 import { useWorker } from '../context/WorkerContext';
+import { apiFieldErrors, validateLoginForm } from '../utils/authValidation';
 
 export default function WelcomePage({ active }) {
-  const { navigate } = useWorker();
+  const { navigate, login } = useWorker();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const validationErrors = validateLoginForm({ email, password });
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setErrors({});
+    setSubmitting(true);
+    try {
+      const result = await login({
+        email: email.trim().toLowerCase(),
+        password,
+        remember: false,
+      });
+      if (!result.ok) {
+        const fieldErrors = apiFieldErrors(result.error);
+        setErrors(
+          Object.keys(fieldErrors).length > 0
+            ? fieldErrors
+            : { password: '이메일 또는 비밀번호를 확인해주세요.' },
+        );
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <section id="screen-welcome" className={`screen splash-screen ${active ? 'active' : ''}`}>
       <div className="splash-noise" aria-hidden="true" />
 
       <div className="splash-hero">
-        <div className="splash-logo-stage" aria-hidden="true">
-          <span className="splash-glow glow-one" />
-          <span className="splash-glow glow-two" />
-          <span className="splash-orbit orbit-one" />
-          <span className="splash-orbit orbit-two" />
-          <img className="splash-logo" src="/shimon-logo.png" alt="SHIMON" />
+        <div className="splash-brand-group">
+          <div className="splash-logo-stage" aria-hidden="true">
+            <span className="splash-glow glow-one" />
+            <span className="splash-glow glow-two" />
+            <span className="splash-orbit orbit-one" />
+            <span className="splash-orbit orbit-two" />
+            <img className="splash-logo" src="/shimon-logo.png" alt="SHIMON" />
+          </div>
+
+          <div className="splash-wordmark">SHIMON</div>
+          <p className="splash-eyebrow">
+            AI 기반 폭염 옥외 노동자<br />
+            휴식 관리 서비스
+          </p>
         </div>
 
-        <div className="splash-wordmark">SHIMON</div>
-        <p className="splash-eyebrow">AI 기반 폭염 옥외 노동자 안전관리</p>
-        <h1>더위가 위험해지기 전에,<br />쉼이 먼저 시작됩니다.</h1>
-      </div>
+        <form id="welcome-login-form" className="splash-login-form" onSubmit={handleSubmit}>
+          <label className={`splash-login-field ${errors.email ? 'has-error' : ''}`}>
+            <span>이메일</span>
+            <input
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setErrors((current) => ({ ...current, email: undefined }));
+              }}
+              type="email"
+              placeholder="이메일"
+              autoComplete="username"
+              aria-invalid={Boolean(errors.email)}
+              required
+            />
+            {errors.email && <small className="splash-field-error">{errors.email}</small>}
+          </label>
 
-      <div className="splash-features">
-        <div className="splash-feature">
-          <span className="feature-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M14 4a2 2 0 0 0-4 0v9.1a5 5 0 1 0 4 0V4Z" />
-              <path d="M12 8v7" />
-            </svg>
-          </span>
-          <span className="feature-copy"><strong>체감온도 모니터링</strong></span>
-        </div>
-
-        <div className="splash-feature">
-          <span className="feature-icon feature-icon-gradient">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="8" />
-              <path d="M12 7v5l3 2" />
-              <path d="M4 12h3l1.4-2.4 2.3 5.1 2-4 1.4 2.3H20" />
-            </svg>
-          </span>
-          <span className="feature-copy"><strong>스마트 휴식 안내</strong></span>
-        </div>
-
-        <div className="splash-feature">
-          <span className="feature-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M18 8a6 6 0 0 0-12 0c0 6-2.6 6.7-2.6 8.3h17.2C20.6 14.7 18 14 18 8Z" />
-              <path d="M9.5 20h5" />
-            </svg>
-          </span>
-          <span className="feature-copy"><strong>위험 알림·안전 기록</strong></span>
-        </div>
+          <label className={`splash-login-field ${errors.password ? 'has-error' : ''}`}>
+            <span>비밀번호</span>
+            <input
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setErrors((current) => ({ ...current, password: undefined }));
+              }}
+              type="password"
+              placeholder="비밀번호"
+              autoComplete="current-password"
+              aria-invalid={Boolean(errors.password)}
+              required
+            />
+            {errors.password && <small className="splash-field-error">{errors.password}</small>}
+          </label>
+        </form>
       </div>
 
       <div className="splash-signature" aria-hidden="true">
@@ -63,14 +105,14 @@ export default function WelcomePage({ active }) {
       </div>
 
       <div className="splash-actions">
-        <button className="btn btn-splash" type="button" onClick={() => navigate('signup')}>
-          <span>회원가입</span>
+        <button className="btn btn-splash" type="submit" form="welcome-login-form" disabled={submitting}>
+          <span>{submitting ? '로그인 중...' : '로그인'}</span>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
         </button>
 
         <p className="splash-switch">
-          이미 계정이 있으신가요?{' '}
-          <button className="splash-link" type="button" onClick={() => navigate('login')}>로그인</button>
+          아직 계정이 없으신가요?{' '}
+          <button className="splash-link" type="button" onClick={() => navigate('signup')}>회원가입</button>
         </p>
       </div>
     </section>

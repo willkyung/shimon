@@ -25,6 +25,12 @@ def test_ai_risk_enum_is_canonical() -> None:
     assert [risk.value for risk in AiRiskLevel] == ["LOW", "CAUTION", "HIGH"]
 
 
+def test_worker_profile_contains_mvp_work_context() -> None:
+    columns = set(Base.metadata.tables["worker_profiles"].columns.keys())
+
+    assert {"gender", "work_type", "work_intensity", "has_workwear"} <= columns
+
+
 def test_compliance_and_ai_records_are_separate() -> None:
     compliance_columns = set(ComplianceCheck.__table__.columns.keys())
     ai_columns = set(HeatRiskAssessment.__table__.columns.keys())

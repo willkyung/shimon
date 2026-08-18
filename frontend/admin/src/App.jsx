@@ -9,7 +9,11 @@ import Toast from './components/Toast';
 import { useAdmin } from './context/AdminContext';
 
 export default function App() {
-  const { isAuthenticated, page } = useAdmin();
+  const { isAuthenticated, authRestoring, page } = useAdmin();
+
+  if (authRestoring) {
+    return <section className="auth-shell"><div className="auth-brand-panel" /><div className="auth-form-panel"><div className="auth-form-inner"><p className="auth-kicker">SHIMON</p><h2>로그인 상태를 확인하고 있습니다.</h2></div></div></section>;
+  }
 
   if (!isAuthenticated) {
     return (

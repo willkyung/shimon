@@ -20,11 +20,10 @@ export default function MyPage({ active }) {
         </div>
 
         <article className="card info-list-card">
-          <div className="info-row"><span>사원코드</span><strong>{user.employeeCode || '-'}</strong></div>
           <div className="info-row"><span>회사명</span><strong>{user.company || '-'}</strong></div>
           <div className="info-row"><span>작업 유형</span><strong>{user.jobType || '-'}</strong></div>
           <div className="info-row"><span>작업 장소</span><strong>{user.workplace || '-'}</strong></div>
-          <div className="info-row"><span>작업 강도</span><strong>{user.workIntensity || '보통'}</strong></div>
+          <div className="info-row"><span>작업 강도</span><strong>{user.workIntensity || '-'}</strong></div>
           <div className="info-row"><span>작업복</span><strong>{user.uniform || '-'}</strong></div>
           <div className="info-row"><span>연령</span><strong>{user.age ? `${user.age}세` : '-'}</strong></div>
         </article>
@@ -46,7 +45,7 @@ export default function MyPage({ active }) {
                   <path d="M19 13.5 21 15l-2 3.5-2.4-1a8 8 0 0 1-2.4 1.4L14 21.5h-4l-.3-2.6a8 8 0 0 1-2.4-1.4l-2.4 1-2-3.5L4.8 13.5a8 8 0 0 1 0-3L3 9l2-3.5 2.4 1a8 8 0 0 1 2.4-1.4L10 2.5h4l.3 2.6a8 8 0 0 1 2.4 1.4l2.4-1 2 3.5-1.9 1.5a8 8 0 0 1 0 3Z" />
                 </svg>
               </span>
-              작업 정보 수정
+              정보 수정
             </span>
             <span>›</span>
           </button>

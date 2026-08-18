@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Uuid, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.database import Base
@@ -30,6 +30,12 @@ class WorkerProfile(Base):
         Uuid, ForeignKey("work_sites.id")
     )
     age: Mapped[int | None]
+    gender: Mapped[str | None] = mapped_column(String(20))
+    work_type: Mapped[str | None] = mapped_column(String(100))
+    work_intensity: Mapped[str | None] = mapped_column(String(30))
+    has_workwear: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     has_cooling_device: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
