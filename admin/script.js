@@ -1129,66 +1129,85 @@ function renderAlerts() {
                                 )
                                 .join(' · ');
 
-                        return `
-                            <article class="alert-item ${alert.type}">
-                                <div class="alert-icon">
-                                    <svg>
-                                        <use href="${
-                                            alert.type ===
-                                            'danger'
-                                                ? '#i-alert'
-                                                : '#i-pulse'
-                                        }"></use>
-                                    </svg>
-                                </div>
+                        const statusText =
+                            String(alert.title || '')
+                                .replace(/^매우 위험\s*·\s*/, '')
+                                .trim();
 
-                                <div class="alert-copy">
-                                    <div class="alert-title-line">
-                                        <strong>${alert.name} · ${alert.title}</strong>
-                                        ${
-                                            worker
-                                                ? `
-                                                <span class="risk-badge ${worker.risk}">
-                                                    ${riskLabel(worker.risk)}
-                                                </span>
-                                                `
-                                                : ''
-                                        }
+                        const riskClass =
+                            worker?.risk ||
+                            (alert.type === 'danger'
+                                ? 'critical'
+                                : 'caution');
+
+                        const riskText =
+                            worker
+                                ? riskLabel(worker.risk)
+                                : alert.type === 'danger'
+                                    ? '매우 위험'
+                                    : '주의';
+
+                        return `
+                            <article class="alert-item ${alert.type} risk-${riskClass}">
+                                <div class="alert-main">
+                                    <div class="alert-card-head">
+                                        <div class="alert-identity">
+                                            <strong class="alert-worker-name">${alert.name}</strong>
+                                            <span class="alert-status-text">${statusText}</span>
+                                        </div>
+
+                                        <span class="alert-risk-badge ${riskClass}">
+                                            ${riskText}
+                                        </span>
                                     </div>
 
                                     ${
                                         worker
                                             ? `
-                                            <div class="alert-metrics">
-                                                <span class="alert-metric apparent">
-                                                    체감 ${worker.apparentTemp}°C
-                                                </span>
-                                                <span class="alert-metric core ${coreTempClass(worker.coreTemp)}">
-                                                    <b>AI 추정</b>
-                                                    심부 ${worker.coreTemp.toFixed(1)}°C
-                                                </span>
+                                            <div class="alert-vitals" aria-label="핵심 위험 수치">
+                                                <div class="alert-vital apparent ${tempClass(worker.apparentTemp)}">
+                                                    <span>체감온도</span>
+                                                    <strong>${worker.apparentTemp}°C</strong>
+                                                </div>
+
+                                                <div class="alert-vital core ${coreTempClass(worker.coreTemp)}">
+                                                    <span>
+                                                        <b>AI 추정</b>
+                                                        심부체온
+                                                    </span>
+                                                    <strong>${worker.coreTemp.toFixed(1)}°C</strong>
+                                                </div>
                                             </div>
                                             `
                                             : ''
                                     }
 
-                                    <p>${reason || alert.detail}</p>
+                                    <div class="alert-reason-row">
+                                        <span>사유</span>
+                                        <p>${reason || alert.detail}</p>
+                                    </div>
                                 </div>
 
-                                <div class="alert-meta">
-                                    <time>${alert.time}</time>
+                                <aside class="alert-side">
+                                    <div class="alert-time-block">
+                                        <span>발생 시각</span>
+                                        <time>${alert.time}</time>
+                                    </div>
+
                                     <button
                                         type="button"
                                         onclick="sendWorkerRestAlert('${alert.name}')"
                                     >
                                         ${
-                                            alert.type ===
-                                            'danger'
+                                            alert.type === 'danger'
                                                 ? '즉시 휴식 알림'
                                                 : '휴식 권고'
                                         }
+                                        <svg aria-hidden="true">
+                                            <use href="#i-chevron"></use>
+                                        </svg>
                                     </button>
-                                </div>
+                                </aside>
                             </article>
                         `;
                     }
