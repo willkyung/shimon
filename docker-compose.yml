@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: shimon-postgres
+    environment:
+      POSTGRES_DB: shimon
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - shimon_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d shimon"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  shimon_postgres_data:

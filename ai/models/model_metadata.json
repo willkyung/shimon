@@ -1,0 +1,67 @@
+{
+  "created_at": "2026-08-18T06:46:13.744258+00:00",
+  "model_type": "XGBRegressor",
+  "feature_order": [
+    "feels_like_temp",
+    "age",
+    "clothing",
+    "gradient",
+    "continuous_work_min"
+  ],
+  "target": "core_temp",
+  "n_training_rows": 12420,
+  "n_participants": 40,
+  "xgb_params": {
+    "n_estimators": 100,
+    "max_depth": 3,
+    "learning_rate": 0.1,
+    "random_state": 42
+  },
+  "cv_metrics": {
+    "method": "GroupKFold (participant 기준, n_splits=5)",
+    "mae_mean_celsius": 0.3717,
+    "mae_std_celsius": 0.0125,
+    "rmse_mean_celsius": 0.4538,
+    "rmse_std_celsius": 0.0173,
+    "fold_results": [
+      {
+        "fold": 1,
+        "mae": 0.3506,
+        "rmse": 0.4232
+      },
+      {
+        "fold": 2,
+        "mae": 0.3695,
+        "rmse": 0.4502
+      },
+      {
+        "fold": 3,
+        "mae": 0.3723,
+        "rmse": 0.4756
+      },
+      {
+        "fold": 4,
+        "mae": 0.3888,
+        "rmse": 0.4597
+      },
+      {
+        "fold": 5,
+        "mae": 0.3775,
+        "rmse": 0.4603
+      }
+    ]
+  },
+  "shap_feature_importance_mean_abs": {
+    "continuous_work_min": 0.2302,
+    "feels_like_temp": 0.1032,
+    "gradient": 0.0709,
+    "clothing": 0.0654,
+    "age": 0.0513
+  },
+  "notes": [
+    "학습 데이터: PROSPIE 공개 데이터셋 (Loughborough Univ, 실험실 환경, 참가자 40명, 19~40세)",
+    "실제 서비스의 feels_like_temp / continuous_work_min 계산 로직은 preprocess.py와 반드시 동일해야 함",
+    "이 모델의 출력은 확정 진단이 아니라 상대적 위험 우선순위 참고용 점수로만 사용할 것",
+    "법정 휴식 기준(Rule Engine)은 이 모델과 무관하게 항상 우선 적용됨"
+  ]
+}
