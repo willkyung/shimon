@@ -29,7 +29,7 @@ from backend.app.services.compliance import (
     evaluate_mvp_heat_rest_rule,
     utc_now,
 )
-from backend.app.services.heat_features import compute_overall_risk_level
+from backend.app.services.heat_features import compute_overall_risk_level, normalize_clothing_level
 from backend.app.services.risk_service import MODEL_NAME, MODEL_VERSION, assess_worker_risk
 
 # heat_features.score_to_risk_level()이 내는 값(NORMAL/CAUTION/HIGH)과
@@ -123,16 +123,6 @@ def _mvp_rule(db: Session) -> ComplianceRule:
     return rule
 
 
-# 프론트(work-sessions API)는 clothingLevel을 "WORKWEAR"/"STANDARD"로 보낸다.
-# 학습 데이터 기준 카테고리(BREATHABLE/NON_BREATHABLE)와 이름이 달라서 변환이 필요하다.
-_CLOTHING_LEVEL_ALIASES = {
-    "WORKWEAR": "NON_BREATHABLE",
-    "STANDARD": "BREATHABLE",
-    "BREATHABLE": "BREATHABLE",
-    "NON_BREATHABLE": "NON_BREATHABLE",
-}
-
-
 def _run_ai_assessment(db: Session, work_session: WorkSession) -> AiEvaluationData | None:
     """
     XGBoost 모델 + Rule Engine을 돌려서 AI 추정치를 계산하고, heat_risk_assessments에
@@ -148,7 +138,7 @@ def _run_ai_assessment(db: Session, work_session: WorkSession) -> AiEvaluationDa
         select(RestRecord).where(RestRecord.work_session_id == work_session.id)
     ).all()
 
-    clothing_level = _CLOTHING_LEVEL_ALIASES.get(work_session.clothing_level, "NON_BREATHABLE")
+    clothing_level = normalize_clothing_level(work_session.clothing_level)
 
     result = assess_worker_risk(
         worker={"age": profile.age},

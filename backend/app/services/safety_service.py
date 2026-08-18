@@ -19,6 +19,7 @@ from backend.app.models import RestRecord, User, WorkSession
 from backend.app.models.enums import WorkSessionStatus
 from backend.app.services.heat_features import (
     compute_overall_risk_level,
+    normalize_clothing_level,
     ppe_worn_to_clothing_level,
 )
 from backend.app.services.risk_service import assess_worker_risk
@@ -64,7 +65,7 @@ def compute_live_safety(user: User, session: WorkSession | None) -> dict | None:
     if session is not None:
         work_session_input = {
             "started_at": session.started_at,
-            "clothing_level": session.clothing_level,
+            "clothing_level": normalize_clothing_level(session.clothing_level),
             "work_intensity": session.work_intensity,
             "rest_records": [{"ended_at": r.ended_at} for r in session.rest_records],
         }

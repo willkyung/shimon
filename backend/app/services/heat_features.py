@@ -104,6 +104,21 @@ def ppe_worn_to_clothing_level(ppe_worn: bool) -> str:
     return "BREATHABLE" if ppe_worn else "NON_BREATHABLE"
 
 
+# work_sessions.py(팀원 구현)는 WorkSession.clothing_level에 "WORKWEAR"/"STANDARD"를
+# 그대로 저장한다. 학습 데이터 기준 카테고리(BREATHABLE/NON_BREATHABLE)와 이름이 달라서
+# AI 모델에 넣기 전에 항상 이 매핑을 거쳐야 한다 (risk_service/safety_service 양쪽에서 공용).
+CLOTHING_LEVEL_ALIASES = {
+    "WORKWEAR": "NON_BREATHABLE",
+    "STANDARD": "BREATHABLE",
+    "BREATHABLE": "BREATHABLE",
+    "NON_BREATHABLE": "NON_BREATHABLE",
+}
+
+
+def normalize_clothing_level(clothing_level: str) -> str:
+    return CLOTHING_LEVEL_ALIASES.get(clothing_level, "NON_BREATHABLE")
+
+
 # 작업강도(낮음/중간/높음) 선택값 -> 학습 데이터 gradient 대표값 매핑
 # (학습 데이터 gradient를 3등분한 중앙값: 3 / 5 / 7)
 WORK_INTENSITY_TO_GRADIENT = {
