@@ -1,0 +1,1 @@
+"""SHIMON FastAPI application package."""
