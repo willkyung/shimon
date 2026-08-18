@@ -3592,3 +3592,35 @@ svg {
     }
 }
 
+
+
+/* =========================================================
+   REACT ROOT / CONTROLLED FORM COMPATIBILITY
+   기존 관리자 디자인은 유지하고 React 마운트만 보정합니다.
+========================================================= */
+#root {
+    min-height: 100vh;
+}
+
+.admin-app button,
+.auth-shell button {
+    font-family: inherit;
+}
+
+.react-empty-state {
+    margin: 0;
+    padding: 36px;
+    color: #8793A4;
+    text-align: center;
+    font-size: 10px;
+}
+
+.alert-empty {
+    padding: 28px 22px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: #fff;
+    color: #8793A4;
+    text-align: center;
+    box-shadow: var(--card-shadow);
+}
