@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# AI Datasets
+ai/data/raw/*
+ai/data/processed/*
+*.csv
+*.xlsx
