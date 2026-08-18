@@ -1,19 +1,26 @@
 import { useWorker } from '../context/WorkerContext';
-import { EkgIcon, ShieldIcon, ThermometerIcon, WaterIcon } from '../components/Icons';
-import { formatMinutesForAdmin } from '../utils/format';
+import { EkgIcon, ShieldIcon, ThermometerIcon } from '../components/Icons';
+
+const COMPLIANCE_LABELS = {
+  NORMAL: '정상',
+  REST_SCHEDULED: '휴식 예정',
+  DEADLINE_IMMINENT: '휴식 임박',
+  IMMEDIATE_REST_REQUIRED: '휴식 필요',
+};
 
 export default function WorkProgressPage({ active }) {
   const {
     workSeconds,
     workProgress,
     formatDuration,
-    estimatedCoreTemp,
-    coreTempState,
-    adminSettings,
+    currentEvaluation,
     startRest,
     endWork,
-    showToast,
   } = useWorker();
+  const compliance = currentEvaluation?.compliance;
+  const weather = currentEvaluation?.weather;
+  const ai = currentEvaluation?.ai;
+  const complianceLabel = COMPLIANCE_LABELS[compliance?.status] || '-';
 
   return (
     <section id="screen-work-progress" className={`screen content-screen ${active ? 'active' : ''}`}>
@@ -29,64 +36,41 @@ export default function WorkProgressPage({ active }) {
             <svg className="ring-ekg" viewBox="0 0 64 18" aria-hidden="true"><path d="M2 10h12l5-7 7 13 7-12 7 10 5-6h17" /></svg>
             <span>작업 시간</span>
             <strong>{formatDuration(workSeconds)}</strong>
-            <small>{formatMinutesForAdmin(adminSettings.maxWorkMinutes)} 기준</small>
+            <small>마지막 휴식 이후 연속 작업</small>
           </div>
 
           <div className="work-metric-grid" aria-label="현재 작업 안전 지표">
             <div className="work-metric-card apparent">
               <span className="work-metric-icon" aria-hidden="true"><ThermometerIcon /></span>
               <span className="work-metric-label">체감온도</span>
-              <strong>33℃</strong>
+              <strong>{weather ? `${weather.feelsLikeTemperature.toFixed(1).replace('.0', '')}℃` : '-'}</strong>
             </div>
 
             <div className="work-metric-card risk">
               <span className="work-metric-icon" aria-hidden="true"><ShieldIcon /></span>
-              <span className="work-metric-label">현재 위험도</span>
-              <strong className="risk-text">주의</strong>
+              <span className="work-metric-label">준수 상태</span>
+              <strong className="risk-text">{complianceLabel}</strong>
             </div>
 
-            <div id="workCoreTempCard" className="work-metric-card core-temp" data-level={coreTempState.level}>
+            <div id="workCoreTempCard" className="work-metric-card core-temp" data-level={ai?.riskLevel?.toLowerCase() || 'unavailable'}>
               <span className="work-metric-icon" aria-hidden="true"><EkgIcon /></span>
               <span className="work-metric-label">AI 추정<br />심부체온</span>
-              <strong>{estimatedCoreTemp.toFixed(1)}℃</strong>
-              <small>{coreTempState.label}</small>
+              <strong>{ai?.predictedCoreTemperature ? `${ai.predictedCoreTemperature.toFixed(1)}℃` : '-'}</strong>
+              <small>{ai?.riskLevel || '미연동'}</small>
             </div>
           </div>
 
-          <button
-            className="work-core-temp-note"
-            type="button"
-            onClick={() => showToast('체감온도·연령·작업강도·PPE·연속작업시간을 바탕으로 계산한 AI 추정값이며, 실측 체온이 아닙니다.')}
-          >
+          <div className="work-core-temp-note">
             <span>AI 추정 심부체온은 실측 체온이 아닙니다.</span><strong>i</strong>
-          </button>
-        </article>
-
-        <article className="card checklist-card work-safety-card">
-          <div className="work-safety-heading">
-            <div><span className="work-safety-eyebrow">SAFETY CHECK</span><h2>안전 체크</h2></div>
-            <span className="work-safety-mark" aria-hidden="true"><ShieldIcon check /></span>
-          </div>
-
-          <div className="work-check-list">
-            <div className="work-check-item water">
-              <span className="work-check-icon" aria-hidden="true"><WaterIcon /></span>
-              <div><strong>수분을 가까이 두기</strong><small>작업 중 조금씩 자주 섭취하세요.</small></div>
-            </div>
-
-            <div className="work-check-item body">
-              <span className="work-check-icon" aria-hidden="true"><EkgIcon /></span>
-              <div><strong>몸 상태 이상 시 바로 휴식</strong><small>어지럼·두통 등 이상 증상을 무시하지 마세요.</small></div>
-            </div>
-
-            <div className="work-check-item alert">
-              <span className="work-check-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 6-2.6 6.7-2.6 8.3h17.2C20.6 14.7 18 14 18 8Z" /><path d="M9.5 20h5" /></svg>
-              </span>
-              <div><strong>휴식 알림 확인하기</strong><small>권장 휴식 알림이 오면 작업을 멈추고 확인하세요.</small></div>
-            </div>
           </div>
         </article>
+
+        {compliance?.isRestRequired && (
+          <div className="work-rest-required-banner" role="alert">
+            <strong>휴식이 필요합니다.</strong>
+            <span>현재 작업을 멈추고 권장 휴식을 시작해주세요.</span>
+          </div>
+        )}
 
         <div className="action-stack work-session-actions">
           <button className="btn work-rest-gradient-button" type="button" onClick={startRest}>

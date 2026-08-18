@@ -17,6 +17,7 @@ from backend.app.models.enums import UserRole
 
 
 TEST_JWT_SECRET = "test-only-jwt-secret-with-at-least-32-characters"
+TEST_ADMIN_SIGNUP_CODE = "test-admin-signup-code"
 
 
 @pytest.fixture
@@ -25,6 +26,7 @@ def auth_context(
 ) -> Generator[tuple[TestClient, sessionmaker[Session], Company, WorkSite], None, None]:
     monkeypatch.setenv("JWT_SECRET", TEST_JWT_SECRET)
     monkeypatch.setenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "60")
+    monkeypatch.setenv("ADMIN_SIGNUP_CODE", TEST_ADMIN_SIGNUP_CODE)
     get_settings.cache_clear()
 
     engine = create_engine(
@@ -198,20 +200,64 @@ def test_signup_generates_unique_employee_codes_and_rejects_duplicate_email(
     assert duplicate_email.json()["error"]["code"] == "EMAIL_ALREADY_EXISTS"
 
 
-def test_public_admin_signup_is_forbidden(
+def test_admin_signup_requires_valid_server_side_code(
     auth_context: tuple[TestClient, sessionmaker[Session], Company, WorkSite],
 ) -> None:
     client, test_session, _company, site = auth_context
 
-    response = client.post(
+    missing_code = client.post(
         "/api/v1/auth/signup",
         json=signup_payload(role="ADMIN", workerProfile=None),
     )
+    wrong_code = client.post(
+        "/api/v1/auth/signup",
+        json=signup_payload(
+            role="ADMIN",
+            workerProfile=None,
+            adminSignupCode="wrong-admin-code",
+        ),
+    )
 
-    assert response.status_code == 403
-    assert response.json()["error"]["code"] == "FORBIDDEN"
+    assert missing_code.status_code == 403
+    assert missing_code.json()["error"]["code"] == "INVALID_ADMIN_SIGNUP_CODE"
+    assert missing_code.json()["error"]["field"] == "adminSignupCode"
+    assert wrong_code.status_code == 403
+    assert wrong_code.json()["error"]["code"] == "INVALID_ADMIN_SIGNUP_CODE"
     with test_session() as db:
         assert db.scalar(select(func.count()).select_from(User)) == 0
+
+
+def test_admin_signup_creates_admin_without_worker_profile_and_can_login(
+    auth_context: tuple[TestClient, sessionmaker[Session], Company, WorkSite],
+) -> None:
+    client, test_session, _company, _site = auth_context
+    payload = signup_payload(
+        email="manager@example.com",
+        name="Site Manager",
+        role="ADMIN",
+        workerProfile=None,
+        adminSignupCode=TEST_ADMIN_SIGNUP_CODE,
+    )
+
+    signup = client.post("/api/v1/auth/signup", json=payload)
+    login = client.post(
+        "/api/v1/auth/login",
+        json={"email": "manager@example.com", "password": "password123"},
+    )
+
+    assert signup.status_code == 201
+    signup_data = signup.json()["data"]
+    assert signup_data["role"] == "ADMIN"
+    assert signup_data["employeeCode"].startswith("A")
+    assert login.status_code == 200
+    assert login.json()["data"]["user"]["role"] == "ADMIN"
+    claims = decode_access_token(login.json()["data"]["accessToken"])
+    assert claims["role"] == "ADMIN"
+    with test_session() as db:
+        admin = db.scalar(select(User).where(User.email == "manager@example.com"))
+        assert admin is not None
+        assert admin.role == UserRole.ADMIN
+        assert db.get(WorkerProfile, admin.id) is None
 
 
 def test_signup_validation_returns_field_details(

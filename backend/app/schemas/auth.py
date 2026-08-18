@@ -40,6 +40,7 @@ class SignupRequest(ApiModel):
     phone: str | None = Field(default=None, max_length=30)
     role: UserRole
     worker_profile: WorkerProfileRequest | None = None
+    admin_signup_code: str | None = Field(default=None, min_length=1, max_length=128)
 
     @field_validator("email")
     @classmethod

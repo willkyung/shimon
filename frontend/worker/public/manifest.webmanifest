@@ -1,0 +1,19 @@
+{
+  "name": "SHIMON 안전 관리",
+  "short_name": "SHIMON",
+  "description": "AI 기반 폭염 옥외 노동자 휴식 관리 서비스",
+  "lang": "ko-KR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2f5f9",
+  "theme_color": "#213162",
+  "icons": [
+    {
+      "src": "/shimon-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

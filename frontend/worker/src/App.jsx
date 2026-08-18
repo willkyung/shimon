@@ -14,6 +14,7 @@ import RecordPage from './pages/RecordPage';
 import MyPage from './pages/MyPage';
 import SettingsPage from './pages/SettingsPage';
 import NotificationsPage from './pages/NotificationsPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 const AUTH_SCREENS = ['welcome', 'login', 'signup'];
 
@@ -24,10 +25,10 @@ export default function App() {
     return <div className="worker-app"><div className="phone-shell"><main className="worker-main"><section className="screen active splash-screen"><div className="splash-content"><p className="splash-eyebrow">SHIMON</p><h1>로그인 상태를 확인하고 있습니다.</h1></div></section></main></div></div>;
   }
 
-  const showHeader = !AUTH_SCREENS.includes(screen) && screen !== 'rest-alert';
+  const showHeader = !AUTH_SCREENS.includes(screen) && !['rest-alert', 'admin-dashboard'].includes(screen);
   const showBottomNav =
     !AUTH_SCREENS.includes(screen) &&
-    !['rest-alert', 'notifications', 'settings'].includes(screen);
+    !['rest-alert', 'notifications', 'settings', 'admin-dashboard'].includes(screen);
 
   return (
     <>
@@ -47,6 +48,7 @@ export default function App() {
             <MyPage active={screen === 'mypage'} />
             <SettingsPage active={screen === 'settings'} />
             <NotificationsPage active={screen === 'notifications'} />
+            <AdminDashboardPage active={screen === 'admin-dashboard'} />
           </main>
 
           {showBottomNav && <BottomNav />}
