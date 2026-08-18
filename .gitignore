@@ -222,3 +222,5 @@ ai/data/raw/*
 ai/data/processed/*
 *.csv
 *.xlsx
+
+.env.example

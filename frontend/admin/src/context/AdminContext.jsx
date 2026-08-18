@@ -2,28 +2,29 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
 
 import {
-  ADMIN_EMPLOYEE_DIRECTORY,
   ALERTS,
   DEFAULT_SETTINGS,
-  DEMO_ADMIN,
   WORKERS,
 } from '../data/adminData';
+
+import { authApi, authErrorMessage } from '../api/authApi';
 
 import {
   coreTempClass,
   getSortedWorkers,
-  normalizeEmployeeCode,
   riskLabel,
   siteMatches,
 } from '../utils/adminUtils';
 
 const AdminContext = createContext(null);
+const ADMIN_TOKEN_KEY = 'shimonAdminAccessToken';
 
 const PAGE_META = {
   dashboard: { title: '대시보드', eyebrow: 'FIELD SAFETY OVERVIEW' },
@@ -49,20 +50,23 @@ function readStoredSettings() {
   }
 }
 
-function readStoredSession() {
-  try {
-    const raw = sessionStorage.getItem('shimonAdminSession');
-    const saved = raw ? JSON.parse(raw) : null;
-    return saved?.role === 'admin' ? saved : null;
-  } catch {
-    return null;
-  }
+function toAdminViewModel(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    role: 'admin',
+    company: user.companyCode,
+    employeeCode: user.employeeCode,
+    email: user.email,
+    phone: user.phone || '-',
+  };
 }
 
 export function AdminProvider({ children }) {
-  const savedSession = readStoredSession();
-
-  const [currentAdmin, setCurrentAdmin] = useState(savedSession);
+  const [currentAdmin, setCurrentAdmin] = useState(null);
+  const [authRestoring, setAuthRestoring] = useState(
+    Boolean(sessionStorage.getItem(ADMIN_TOKEN_KEY)),
+  );
   const [authView, setAuthView] = useState('welcome');
   const [page, setPage] = useState('dashboard');
   const [siteFilter, setSiteFilter] = useState(() => readStoredSettings().defaultSite || 'all');
@@ -77,76 +81,61 @@ export function AdminProvider({ children }) {
     toastRef.current = window.setTimeout(() => setToastMessage(''), 2200);
   }, []);
 
-  const login = useCallback(({ identifier, password }) => {
-    let savedAccount = null;
-    try {
-      const raw = localStorage.getItem('shimonAdminAccount');
-      savedAccount = raw ? JSON.parse(raw) : null;
-    } catch {
-      savedAccount = null;
+  useEffect(() => {
+    const token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
+    if (!token) {
+      setAuthRestoring(false);
+      return undefined;
     }
 
-    const normalized = normalizeEmployeeCode(identifier);
-    const candidates = [savedAccount, DEMO_ADMIN].filter(Boolean);
+    let active = true;
+    authApi.me(token)
+      .then((user) => {
+        if (!active) return;
+        if (user.role !== 'ADMIN') throw new Error('ADMIN role required');
+        setCurrentAdmin(toAdminViewModel(user));
+      })
+      .catch(() => {
+        if (!active) return;
+        sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+        setCurrentAdmin(null);
+      })
+      .finally(() => {
+        if (active) setAuthRestoring(false);
+      });
 
-    const account = candidates.find(
-      (item) =>
-        (
-          item.employeeCode === normalized ||
-          String(item.email || '').toLowerCase() === String(identifier || '').trim().toLowerCase() ||
-          item.name === String(identifier || '').trim()
-        ) &&
-        item.password === password,
-    );
+    return () => {
+      active = false;
+    };
+  }, []);
 
-    if (!account) {
-      showToast('관리자 계정 또는 비밀번호를 확인해주세요.');
+  const login = useCallback(async ({ email, password }) => {
+    try {
+      const result = await authApi.login({ email, password });
+      if (result.user.role !== 'ADMIN') {
+        showToast('관리자 권한이 없는 계정입니다.');
+        return false;
+      }
+      sessionStorage.setItem(ADMIN_TOKEN_KEY, result.accessToken);
+      const user = await authApi.me(result.accessToken);
+      setCurrentAdmin(toAdminViewModel(user));
+      setPage('dashboard');
+      showToast('관리자 계정으로 로그인했습니다.');
+      return true;
+    } catch (error) {
+      sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+      showToast(authErrorMessage(error));
       return false;
     }
-
-    const next = { ...account };
-    setCurrentAdmin(next);
-    sessionStorage.setItem('shimonAdminSession', JSON.stringify(next));
-    setPage('dashboard');
-    return true;
   }, [showToast]);
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem('shimonAdminSession');
+    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
     setCurrentAdmin(null);
     setAuthView('welcome');
     setPage('dashboard');
     showToast('로그아웃되었습니다.');
     window.scrollTo(0, 0);
-  }, [showToast]);
-
-  const verifyAdminEmployee = useCallback(({ employeeCode, name }) => {
-    const code = normalizeEmployeeCode(employeeCode);
-    const employee = ADMIN_EMPLOYEE_DIRECTORY[code];
-
-    if (!employee) {
-      showToast('등록되지 않은 관리자 사원코드입니다.');
-      return null;
-    }
-
-    if (employee.role !== 'admin') {
-      showToast('관리자 권한이 없는 사원코드입니다.');
-      return null;
-    }
-
-    if (employee.name !== String(name || '').trim()) {
-      showToast('사원코드와 등록된 이름이 일치하지 않습니다.');
-      return null;
-    }
-
-    showToast('관리자 사원 확인이 완료되었습니다.');
-    return { ...employee };
-  }, [showToast]);
-
-  const signup = useCallback((account) => {
-    localStorage.setItem('shimonAdminAccount', JSON.stringify(account));
-    setAuthView('login');
-    showToast('관리자 회원가입이 완료되었습니다.');
   }, [showToast]);
 
   const goToPage = useCallback((pageName) => {
@@ -299,12 +288,11 @@ export function AdminProvider({ children }) {
   const value = useMemo(() => ({
     currentAdmin,
     isAuthenticated: Boolean(currentAdmin),
+    authRestoring,
     authView,
     setAuthView,
     login,
     logout,
-    verifyAdminEmployee,
-    signup,
     page,
     pageMeta: PAGE_META[page] || PAGE_META.dashboard,
     goToPage,
@@ -327,11 +315,10 @@ export function AdminProvider({ children }) {
     showToast,
   }), [
     currentAdmin,
+    authRestoring,
     authView,
     login,
     logout,
-    verifyAdminEmployee,
-    signup,
     page,
     goToPage,
     siteFilter,

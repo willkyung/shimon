@@ -10,23 +10,53 @@ import {
 
 import {
   DEFAULT_ADMIN_SETTINGS,
-  demoUsers,
-  employeeDirectory,
   initialRestRecords,
   initialWorkRecords,
 } from '../data/demoData';
+
+import { authApi, authErrorMessage } from '../api/authApi';
 
 import {
   formatDuration,
   formatMinutesForAdmin,
   formatTime,
   getEstimatedCoreTempLevel,
-  normalizeEmployeeCode,
 } from '../utils/format';
 
 const WorkerContext = createContext(null);
 
 const MAIN_SCREENS = ['home', 'work-progress', 'rest-progress', 'record', 'mypage'];
+const WORKER_TOKEN_KEY = 'shimonWorkerAccessToken';
+
+function readWorkerToken() {
+  return localStorage.getItem(WORKER_TOKEN_KEY) || sessionStorage.getItem(WORKER_TOKEN_KEY);
+}
+
+function clearWorkerToken() {
+  localStorage.removeItem(WORKER_TOKEN_KEY);
+  sessionStorage.removeItem(WORKER_TOKEN_KEY);
+}
+
+function toWorkerViewModel(user) {
+  const profile = user.workerProfile;
+  return {
+    id: user.id,
+    name: user.name,
+    role: 'worker',
+    employeeCode: user.employeeCode,
+    company: user.companyName || user.companyCode,
+    email: user.email,
+    phone: user.phone || '',
+    age: profile?.age ?? null,
+    workplace: profile?.assignedSite?.name || '',
+    assignedSiteId: profile?.assignedSite?.id || null,
+    hasCoolingDevice: profile?.hasCoolingDevice ?? false,
+    jobType: profile?.workType || '',
+    workIntensity: profile?.workIntensity || '',
+    uniform: profile ? (profile.hasWorkwear ? 'O' : 'X') : '',
+    gender: profile?.gender || '',
+  };
+}
 
 function readSavedAdminSettings() {
   try {
@@ -49,7 +79,8 @@ function readSavedAdminSettings() {
 export function WorkerProvider({ children }) {
   const [screen, setScreen] = useState('welcome');
   const [lastMainScreen, setLastMainScreen] = useState('home');
-  const [currentUser, setCurrentUser] = useState(demoUsers.김철수);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authRestoring, setAuthRestoring] = useState(Boolean(readWorkerToken()));
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [toastMessage, setToastMessage] = useState('');
   const toastTimerRef = useRef(null);
@@ -78,6 +109,35 @@ export function WorkerProvider({ children }) {
     setToastMessage(message);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => setToastMessage(''), 2200);
+  }, []);
+
+  useEffect(() => {
+    const token = readWorkerToken();
+    if (!token) {
+      setAuthRestoring(false);
+      return undefined;
+    }
+
+    let active = true;
+    authApi.me(token)
+      .then((user) => {
+        if (!active) return;
+        if (user.role !== 'WORKER') throw new Error('WORKER role required');
+        setCurrentUser(toWorkerViewModel(user));
+        setScreen('home');
+      })
+      .catch(() => {
+        if (!active) return;
+        clearWorkerToken();
+        setCurrentUser(null);
+      })
+      .finally(() => {
+        if (active) setAuthRestoring(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const navigate = useCallback((nextScreen) => {
@@ -261,60 +321,71 @@ export function WorkerProvider({ children }) {
     });
   }, [showToast]);
 
-  const login = useCallback(({ name, password }) => {
-    let savedUser = null;
+  const login = useCallback(async ({ email, password, remember }) => {
     try {
-      const raw = localStorage.getItem('shimonUser');
-      savedUser = raw ? JSON.parse(raw) : null;
-    } catch {
-      savedUser = null;
-    }
-
-    const user = savedUser?.name === name ? savedUser : demoUsers[name];
-    if (!user || user.password !== password) {
-      showToast('이름 또는 비밀번호를 확인해주세요.');
-      return false;
-    }
-
-    setCurrentUser(user);
-
-    if (user.role === 'admin') {
-      try {
-        sessionStorage.setItem('shimonCurrentUser', JSON.stringify(user));
-      } catch {
-        // Session storage is optional in the prototype.
+      const result = await authApi.login({ email, password });
+      if (result.user.role !== 'WORKER') {
+        showToast('작업자 계정으로 로그인해주세요.');
+        return { ok: false, error: { code: 'FORBIDDEN' } };
       }
-      window.location.href = '../admin/index.html';
-      return true;
+
+      clearWorkerToken();
+      const storage = remember ? localStorage : sessionStorage;
+      storage.setItem(WORKER_TOKEN_KEY, result.accessToken);
+      const user = await authApi.me(result.accessToken);
+      setCurrentUser(toWorkerViewModel(user));
+      navigate('home');
+      showToast('로그인되었습니다.');
+      return { ok: true };
+    } catch (error) {
+      clearWorkerToken();
+      showToast(authErrorMessage(error));
+      return { ok: false, error };
+    }
+  }, [navigate, showToast]);
+
+  const signup = useCallback(async (payload) => {
+    try {
+      const result = await authApi.signup(payload);
+      showToast('회원가입이 완료되었습니다. 로그인해주세요.');
+      navigate('welcome');
+      return { ok: true, data: result };
+    } catch (error) {
+      showToast(authErrorMessage(error));
+      return { ok: false, error };
+    }
+  }, [navigate, showToast]);
+
+  const saveProfile = useCallback(async (updates) => {
+    const token = readWorkerToken();
+    if (!token) {
+      showToast('로그인이 필요합니다.');
+      navigate('welcome');
+      return { ok: false, error: { code: 'INVALID_CREDENTIALS' } };
     }
 
-    navigate('home');
-    return true;
-  }, [navigate, showToast]);
-
-  const signup = useCallback((user) => {
-    localStorage.setItem('shimonUser', JSON.stringify(user));
-    showToast('사원 인증 및 회원가입이 완료되었습니다. 로그인해주세요.');
-    navigate('login');
-  }, [navigate, showToast]);
-
-  const saveProfile = useCallback((updates) => {
-    setCurrentUser((user) => {
-      const next = { ...user, ...updates };
-      localStorage.setItem('shimonUser', JSON.stringify(next));
-      return next;
-    });
-    navigate('mypage');
-    showToast('작업 정보가 변경되었습니다.');
+    try {
+      const user = await authApi.updateMe(token, {
+        email: updates.email.trim().toLowerCase(),
+        phone: updates.phone.trim() || null,
+        gender: updates.gender,
+        workArea: updates.workplace.trim(),
+        workType: updates.jobType,
+        hasWorkwear: updates.uniform === 'O',
+      });
+      setCurrentUser(toWorkerViewModel(user));
+      navigate('mypage');
+      showToast('정보가 변경되었습니다.');
+      return { ok: true };
+    } catch (error) {
+      showToast(authErrorMessage(error));
+      return { ok: false, error };
+    }
   }, [navigate, showToast]);
 
   const logout = useCallback(() => {
-    try {
-      sessionStorage.removeItem('shimonCurrentUser');
-    } catch {
-      // Ignore.
-    }
-    setCurrentUser(demoUsers.김철수);
+    clearWorkerToken();
+    setCurrentUser(null);
     setWorkState('idle');
     setWorkSeconds(0);
     setWorkSessionStartedAt(null);
@@ -335,6 +406,7 @@ export function WorkerProvider({ children }) {
     lastMainScreen,
     navigate,
     currentUser,
+    authRestoring,
     setCurrentUser,
     notificationEnabled,
     toggleNotifications,
@@ -365,14 +437,13 @@ export function WorkerProvider({ children }) {
     signup,
     saveProfile,
     logout,
-    employeeDirectory,
-    normalizeEmployeeCode,
     formatDuration,
   }), [
     screen,
     lastMainScreen,
     navigate,
     currentUser,
+    authRestoring,
     notificationEnabled,
     toggleNotifications,
     toastMessage,

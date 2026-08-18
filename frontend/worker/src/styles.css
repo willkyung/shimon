@@ -3600,7 +3600,7 @@ select:focus-visible {
 }
 
 
-/* 작업 정보 수정 */
+/* 정보 수정 */
 .settings-page-header h1 {
     margin: 0 0 7px;
 
@@ -6652,9 +6652,41 @@ select:focus-visible {
 --------------------------------------------------------- */
 
 #screen-welcome .splash-hero {
-    padding-top: 30px;
-    padding-left: 24px;
-    padding-right: 24px;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 24px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(24px, 4.5dvh, 38px);
+}
+
+.field.has-error input,
+.field.has-error select {
+    border-color: #dc6262;
+}
+
+.auth-field-error {
+    display: block;
+    color: #c94f4f;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.settings-field-error {
+    display: block;
+    color: #c94f4f;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+#screen-welcome .splash-brand-group {
+    width: min(100%, 320px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
 #screen-welcome .splash-logo-stage {
@@ -6666,7 +6698,72 @@ select:focus-visible {
 }
 
 #screen-welcome .splash-eyebrow {
-    margin-top: 18px !important;
+    max-width: 260px;
+    margin-top: 12px !important;
+    font-size: clamp(12.5px, 3.35vw, 14px) !important;
+    line-height: 1.65;
+    letter-spacing: .06em !important;
+    word-break: keep-all;
+}
+
+#screen-welcome .splash-login-form {
+    width: min(100%, 340px);
+    display: grid;
+    gap: 12px;
+}
+
+#screen-welcome .splash-login-field {
+    display: block;
+}
+
+#screen-welcome .splash-login-field > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+#screen-welcome .splash-login-field input {
+    width: 100%;
+    height: 56px;
+    padding: 0 18px;
+    border: 1px solid rgba(180, 205, 237, .30);
+    border-radius: 15px;
+    outline: 0;
+    background: rgba(9, 25, 59, .46);
+    color: #fff;
+    font: inherit;
+    font-size: 15px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+    transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+#screen-welcome .splash-login-field input::placeholder {
+    color: rgba(209, 222, 241, .62);
+}
+
+#screen-welcome .splash-login-field input:focus {
+    border-color: rgba(112, 195, 167, .80);
+    background: rgba(11, 31, 70, .72);
+    box-shadow: 0 0 0 3px rgba(103, 203, 130, .13);
+}
+
+#screen-welcome .splash-login-field.has-error input {
+    border-color: rgba(255, 127, 127, .88);
+}
+
+#screen-welcome .splash-field-error {
+    display: block;
+    margin: 5px 4px 0;
+    color: #ffb2b2;
+    font-size: 11px;
+    line-height: 1.35;
+    text-align: left;
 }
 
 #screen-welcome .splash-hero h1 {
@@ -6707,20 +6804,26 @@ select:focus-visible {
 }
 
 #screen-welcome .splash-signature {
+    flex: 0 0 58px;
     height: 58px;
-    margin-top: 8px;
+    margin-top: 0;
 }
 
 #screen-welcome .splash-actions {
+    flex: 0 0 auto;
     padding-top: 2px !important;
-    padding-bottom: 25px !important;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+@media (max-width: 520px) {
+    #screen-welcome {
+        height: 100dvh;
+        min-height: 100dvh;
+        overflow-y: hidden !important;
+    }
 }
 
 @media (max-height: 800px) and (max-width: 520px) {
-    #screen-welcome .splash-hero {
-        padding-top: 18px;
-    }
-
     #screen-welcome .splash-logo-stage {
         width: 126px;
         height: 126px;
@@ -6729,6 +6832,14 @@ select:focus-visible {
     #screen-welcome .splash-logo {
         width: 104px !important;
         height: 104px;
+    }
+
+    #screen-welcome .splash-hero {
+        gap: 20px;
+    }
+
+    #screen-welcome .splash-login-field input {
+        height: 52px;
     }
 
     #screen-welcome .splash-features {
@@ -6741,6 +6852,17 @@ select:focus-visible {
 
     #screen-welcome .splash-signature {
         height: 42px;
+        flex-basis: 42px;
+    }
+}
+
+@media (max-height: 620px) and (max-width: 520px) {
+    #screen-welcome {
+        overflow-y: auto !important;
+    }
+
+    #screen-welcome .splash-hero {
+        min-height: 300px;
     }
 }
 
@@ -7614,6 +7736,36 @@ select:focus-visible {
     opacity: .68;
 }
 
+#screen-signup .signup-field.has-error .signup-control input {
+    border-color: #dc6262;
+    background: #fffafa;
+}
+
+#screen-signup .signup-field-error {
+    display: block;
+    color: #c94f4f;
+    font-size: 10px;
+    line-height: 1.4;
+}
+
+#screen-signup .signup-derived-info {
+    margin: 10px 0 0;
+    padding: 10px 12px;
+    border-radius: 11px;
+    background: rgba(60, 115, 200, .07);
+    color: #61728a;
+    font-size: 10.5px;
+    line-height: 1.45;
+}
+
+#screen-signup .signup-derived-info strong {
+    color: #2f68b0;
+}
+
+#screen-signup .signup-workwear-check {
+    margin-top: 12px;
+}
+
 /* CTA */
 #screen-signup .signup-gradient-cta {
     min-height: 52px;
@@ -7721,31 +7873,6 @@ select:focus-visible {
     stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
-}
-
-/* Prototype helper is visually secondary */
-#screen-signup .signup-demo-box {
-    margin-top: 16px;
-    padding: 12px 13px;
-    display: grid;
-    gap: 3px;
-    border: 1px dashed #dce3ec;
-    border-radius: 14px;
-    background: #f4f6f9;
-    color: #8793a3;
-    font-size: 9px;
-    line-height: 1.45;
-}
-
-#screen-signup .signup-demo-box strong {
-    color: #58677d;
-    font-size: 9.5px;
-}
-
-#screen-signup .signup-demo-box small {
-    margin-top: 2px;
-    color: #9aa5b2;
-    font-size: 8px;
 }
 
 /* Desktop-sized phone shell still keeps a comfortable mobile rhythm */

@@ -19,3 +19,16 @@ def test_versioned_health() -> None:
     assert response.status_code == 200
     assert response.json()["success"] is True
     assert response.json()["data"]["status"] == "ok"
+
+
+def test_worker_frontend_origin_is_allowed_by_cors() -> None:
+    response = client.options(
+        "/api/v1/me",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"

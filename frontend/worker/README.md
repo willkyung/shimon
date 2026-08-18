@@ -1,78 +1,35 @@
-# SHIMON Worker React
+# SHIMON Worker Frontend
 
-기존 `worker/index.html + script.js + style.css` 구조를 React + Vite 구조로 옮긴 버전입니다.
+작업자용 React + Vite 애플리케이션입니다. 회원가입, 로그인, 로그인 상태 복구는
+FastAPI 인증 API와 연결되어 있습니다.
 
 ## 실행
 
+루트에서 PostgreSQL, 마이그레이션, FastAPI를 먼저 실행합니다.
+
 ```bash
+docker compose up -d
+./.venv/Scripts/python.exe -m alembic upgrade head
+export JWT_SECRET="development-only-secret-at-least-32-characters"
+./.venv/Scripts/python.exe -m uvicorn backend.app.main:app --reload --port 8000
+```
+
+별도 터미널에서 worker 앱을 실행합니다.
+
+```bash
+cd frontend/worker
 npm install
 npm run dev
 ```
 
-같은 Wi-Fi의 휴대폰에서도 확인하려면:
+접속 주소: `http://localhost:5173`
 
-```bash
-npm run dev -- --host 0.0.0.0
-```
+## 회원가입 조건
 
-Vite가 보여주는 Network 주소를 휴대폰 브라우저에서 열면 됩니다.
+- 회사와 작업 구역은 관리자가 먼저 등록해야 합니다.
+- 사용자는 회사명과 작업 구역명을 입력하며 사번은 서버에서 자동 생성됩니다.
+- 로그인 아이디는 가입할 때 등록한 이메일입니다.
+- 역할은 `WORKER`로 고정됩니다.
 
-## 구조
-
-```text
-worker-react/
-├─ public/
-│  └─ shimon-logo.png
-├─ src/
-│  ├─ components/
-│  │  ├─ BottomNav.jsx
-│  │  ├─ Header.jsx
-│  │  ├─ Icons.jsx
-│  │  └─ Toast.jsx
-│  ├─ context/
-│  │  └─ WorkerContext.jsx
-│  ├─ data/
-│  │  └─ demoData.js
-│  ├─ pages/
-│  │  ├─ HomePage.jsx
-│  │  ├─ LoginPage.jsx
-│  │  ├─ MyPage.jsx
-│  │  ├─ NotificationsPage.jsx
-│  │  ├─ RecordPage.jsx
-│  │  ├─ RestAlertPage.jsx
-│  │  ├─ RestProgressPage.jsx
-│  │  ├─ SettingsPage.jsx
-│  │  ├─ SignupPage.jsx
-│  │  ├─ WelcomePage.jsx
-│  │  └─ WorkProgressPage.jsx
-│  ├─ utils/
-│  │  └─ format.js
-│  ├─ App.jsx
-│  ├─ main.jsx
-│  └─ styles.css
-├─ index.html
-├─ package.json
-└─ vite.config.js
-```
-
-## 기존 코드에서 바뀐 핵심
-
-- `onclick="..."` → React `onClick`
-- `onsubmit="..."` → React `onSubmit`
-- `document.getElementById()`로 값 변경 → React state/props
-- `setInterval()` 전역 변수 → `useEffect()` 기반 타이머
-- 화면 `classList.toggle('active')` → `screen` state
-- 회원/알림/작업/휴식/기록 상태 → `WorkerContext`
-- 기록 `innerHTML` 생성 → JSX `.map()`
-- `localStorage`의 `shimonUser`, `shimonAdminSettings` 연동 유지
-- AI 추정 심부체온은 `37.5℃ 주의 / 38.0℃ 고위험` 로직 유지
-- 신체 질환 필드는 React 회원가입 데이터에서도 수집하지 않음
-
-## CSS
-
-기존 worker CSS를 `src/styles.css`로 그대로 재사용했습니다. 기존 클래스와 ID를 최대한 유지해서 디자인 변화가 최소화되도록 구성했습니다.
-
-## 관리자 화면 이동
-
-프로토타입 관리자 계정으로 로그인하면 기존 동작처럼 `../admin/index.html`로 이동합니다.
-React worker만 단독 Vite 서버로 띄운 경우에는 admin 경로가 제공되지 않을 수 있으므로, 실제 통합 단계에서는 Router/API 구성에 맞춰 경로를 조정하세요.
+비밀번호는 브라우저 저장소에 보관하지 않습니다. JWT만 저장하며 로그인 유지 선택 시
+`localStorage`, 선택하지 않으면 `sessionStorage`를 사용합니다.

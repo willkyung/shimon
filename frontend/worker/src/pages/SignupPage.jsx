@@ -1,20 +1,18 @@
-import { useMemo, useState } from 'react';
-import { useWorker } from '../context/WorkerContext';
-import { roleLabel } from '../utils/format';
+import { useState } from 'react';
 import { ShieldIcon } from '../components/Icons';
+import { useWorker } from '../context/WorkerContext';
+import { apiFieldErrors, validateSignupForm } from '../utils/authValidation';
+import { WORK_TYPE_OPTIONS, workIntensityFor } from '../utils/workProfile';
 
 const initialForm = {
-  employeeCode: '',
+  companyName: '',
+  workArea: '',
+  workType: '',
+  hasWorkwear: false,
   name: '',
-  company: '',
-  role: '',
-  gender: '',
   phone: '',
   email: '',
   age: '',
-  jobType: '',
-  workplace: '',
-  uniform: '착용',
   password: '',
   passwordConfirm: '',
 };
@@ -29,20 +27,19 @@ function LineIcon({ type }) {
     location: <><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.4" /></>,
     lock: <><rect x="5" y="10" width="14" height="10" rx="3" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
     clock: <><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2" /></>,
-    work: <><path d="M4 19h16M6 19v-7h12v7M8 12V8h8v4" /><path d="M9 8V5h6v3" /></>,
-    shirt: <path d="M8 4 4 7l2 4 2-1v10h8V10l2 1 2-4-4-3-2 2h-4L8 4Z" />,
   };
   return <svg viewBox="0 0 24 24">{icons[type] || icons.user}</svg>;
 }
 
-function Field({ label, icon, children, readOnly = false }) {
+function Field({ label, icon, error, children }) {
   return (
-    <label className="field signup-field">
+    <label className={`field signup-field ${error ? 'has-error' : ''}`}>
       <span>{label}</span>
-      <span className={`signup-control ${readOnly ? 'readonly' : ''}`}>
+      <span className="signup-control">
         <span className="signup-control-icon" aria-hidden="true"><LineIcon type={icon} /></span>
         {children}
       </span>
+      {error && <small className="signup-field-error">{error}</small>}
     </label>
   );
 }
@@ -57,114 +54,48 @@ function SectionHeading({ title, description, gradient = false }) {
 }
 
 export default function SignupPage({ active }) {
-  const { navigate, employeeDirectory, normalizeEmployeeCode, showToast, signup } = useWorker();
+  const { navigate, signup } = useWorker();
   const [form, setForm] = useState(initialForm);
-  const [verifiedEmployee, setVerifiedEmployee] = useState(null);
-  const [verifyError, setVerifyError] = useState('');
-
-  const step = verifiedEmployee ? 2 : 1;
-  const isWorker = verifiedEmployee?.role === 'worker';
-
-  const setValue = (key, value) => setForm((current) => ({ ...current, [key]: value }));
-
-  const resetVerification = (clearValues = false) => {
-    setVerifiedEmployee(null);
-    setVerifyError('');
-    setForm((current) => ({
-      ...current,
-      employeeCode: clearValues ? '' : current.employeeCode,
-      name: clearValues ? '' : current.name,
-      company: '',
-      role: '',
-      gender: clearValues ? '' : current.gender,
-      phone: clearValues ? '' : current.phone,
-      email: clearValues ? '' : current.email,
-      age: clearValues ? '' : current.age,
-      jobType: clearValues ? '' : current.jobType,
-      workplace: clearValues ? '' : current.workplace,
-      uniform: '착용',
-      password: clearValues ? '' : current.password,
-      passwordConfirm: clearValues ? '' : current.passwordConfirm,
-    }));
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const setValue = (key, value) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: undefined }));
   };
 
-  const verify = () => {
-    const code = normalizeEmployeeCode(form.employeeCode);
-    const name = form.name.trim();
-    setVerifyError('');
-
-    if (!code || !name) {
-      setVerifyError('사원코드와 이름을 모두 입력해주세요.');
-      showToast('사원코드와 이름을 입력해주세요.');
-      return;
-    }
-
-    const employee = employeeDirectory[code];
-    if (!employee) {
-      resetVerification(false);
-      setVerifyError('등록되지 않은 사원코드입니다. 현장 관리자에게 문의해주세요.');
-      showToast('등록되지 않은 사원코드입니다.');
-      return;
-    }
-
-    if (employee.name !== name) {
-      resetVerification(false);
-      setVerifyError('사원코드와 회사에 등록된 이름이 일치하지 않습니다.');
-      showToast('사원코드와 이름을 확인해주세요.');
-      return;
-    }
-
-    setVerifiedEmployee(employee);
-    setForm((current) => ({
-      ...current,
-      employeeCode: code,
-      name: employee.name,
-      company: employee.company,
-      role: employee.role,
-      jobType: employee.role === 'worker' ? employee.jobType || '' : '-',
-      workplace: employee.role === 'worker' ? employee.workplace || '' : '통합 관제 센터',
-    }));
-    showToast(`${employee.company} ${roleLabel(employee.role)}로 확인되었습니다.`);
-  };
-
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!verifiedEmployee) {
-      setVerifyError('회원가입 전에 사원 확인이 필요합니다.');
-      showToast('먼저 사원코드 확인을 완료해주세요.');
+    const validationErrors = validateSignupForm(form);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       return;
     }
 
-    if (form.password !== form.passwordConfirm) {
-      showToast('비밀번호와 비밀번호 확인이 일치하지 않습니다.');
-      return;
+    setErrors({});
+    setSubmitting(true);
+    try {
+      const result = await signup({
+        companyName: form.companyName.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+        name: form.name.trim(),
+        phone: form.phone.trim() || null,
+        role: 'WORKER',
+        workerProfile: {
+          age: Number(form.age),
+          workArea: form.workArea.trim(),
+          workType: form.workType,
+          hasWorkwear: form.hasWorkwear,
+        },
+      });
+      if (result.ok) {
+        setForm(initialForm);
+      } else {
+        setErrors(apiFieldErrors(result.error));
+      }
+    } finally {
+      setSubmitting(false);
     }
-
-    const age = isWorker ? Number(form.age) : null;
-    if (isWorker && (!age || age < 18 || age > 80)) {
-      showToast('연령을 확인해주세요.');
-      return;
-    }
-
-    const user = {
-      employeeCode: normalizeEmployeeCode(form.employeeCode),
-      name: form.name.trim(),
-      password: form.password,
-      role: verifiedEmployee.role,
-      company: verifiedEmployee.company,
-      gender: form.gender,
-      phone: form.phone.trim(),
-      email: form.email.trim(),
-      age,
-      jobType: isWorker ? (form.jobType.trim() || verifiedEmployee.jobType || '') : '-',
-      workplace: isWorker ? (form.workplace.trim() || verifiedEmployee.workplace || '') : '통합 관제 센터',
-      workIntensity: isWorker ? '보통' : '-',
-      uniform: isWorker ? form.uniform : '-',
-    };
-
-    signup(user);
-    setVerifiedEmployee(null);
-    setForm(initialForm);
   };
 
   return (
@@ -182,143 +113,52 @@ export default function SignupPage({ active }) {
           <div className="section-heading signup-heading">
             <p className="eyebrow">CREATE ACCOUNT</p>
             <h1>안전한 작업을 위한<br />첫 설정을 시작해요</h1>
-            <p>회사 등록 정보를 확인한 뒤, 근로 환경에 필요한 정보만 입력합니다.</p>
-          </div>
-
-          <div id="signupStepper" className="signup-stepper" data-step={step} aria-label="회원가입 진행 단계">
-            <div className={`signup-step ${step === 1 ? 'is-active' : 'is-complete'}`} aria-current={step === 1 ? 'step' : undefined}>
-              <span className="signup-step-circle">1</span>
-              <span className="signup-step-copy"><strong>사원 확인</strong><small>소속·권한 확인</small></span>
-            </div>
-            <span className={`signup-step-connector ${step === 2 ? 'is-complete' : ''}`} aria-hidden="true" />
-            <div className={`signup-step ${step === 2 ? 'is-active' : ''}`} aria-current={step === 2 ? 'step' : undefined}>
-              <span className="signup-step-circle">2</span>
-              <span className="signup-step-copy"><strong>정보 입력</strong><small>계정·작업 정보</small></span>
-            </div>
+            <p>기존 회사와 현장에 연결되는 작업자 계정을 생성합니다.</p>
           </div>
 
           <form className="form-stack signup-form" onSubmit={handleSubmit}>
-            <div className="employee-verification-card signup-step-card">
-              <div className="signup-card-heading">
-                <span className="signup-section-icon" aria-hidden="true"><ShieldIcon check /></span>
-                <div>
-                  <span className="signup-card-kicker">STEP 01</span>
-                  <strong>회사 등록 정보 확인</strong>
-                  <p>사원코드와 이름으로 소속과 사용자 권한을 확인합니다.</p>
-                </div>
-              </div>
+            <section className="signup-section-card">
+              <SectionHeading title="소속 정보" description="회사명과 작업 구역을 입력해주세요. 사번은 가입 시 자동 생성됩니다." />
+              <Field label="회사명" icon="company" error={errors.companyName}><input value={form.companyName} onChange={(event) => setValue('companyName', event.target.value)} type="text" placeholder="회사명 입력" aria-invalid={Boolean(errors.companyName)} required /></Field>
+              <Field label="작업 구역" icon="location" error={errors.workArea}><input value={form.workArea} onChange={(event) => setValue('workArea', event.target.value)} type="text" placeholder="작업 구역 입력" aria-invalid={Boolean(errors.workArea)} required /></Field>
+            </section>
 
-              <Field label="사원코드" icon="code">
-                <input value={form.employeeCode} onChange={(e) => setValue('employeeCode', e.target.value)} type="text" placeholder="예: HB-W001" autoComplete="off" autoCapitalize="characters" readOnly={Boolean(verifiedEmployee)} required />
+            <section className="signup-section-card">
+              <SectionHeading title="기본 정보" description="작업자 식별과 안전 지원에 필요한 최소 정보입니다." gradient />
+              <Field label="이름" icon="user" error={errors.name}><input value={form.name} onChange={(event) => setValue('name', event.target.value)} type="text" aria-invalid={Boolean(errors.name)} required /></Field>
+              <Field label="이메일" icon="email" error={errors.email}><input value={form.email} onChange={(event) => setValue('email', event.target.value)} type="email" autoComplete="email" aria-invalid={Boolean(errors.email)} required /></Field>
+              <Field label="전화번호 (선택)" icon="phone" error={errors.phone}><input value={form.phone} onChange={(event) => setValue('phone', event.target.value)} type="tel" placeholder="010-0000-0000" autoComplete="tel" aria-invalid={Boolean(errors.phone)} /></Field>
+              <Field label="나이" icon="clock" error={errors.age}><input value={form.age} onChange={(event) => setValue('age', event.target.value)} type="number" min="18" max="100" placeholder="나이 입력" aria-invalid={Boolean(errors.age)} required /></Field>
+              <Field label="작업 유형" icon="code" error={errors.workType}>
+                <select value={form.workType} onChange={(event) => setValue('workType', event.target.value)} aria-invalid={Boolean(errors.workType)} required>
+                  <option value="">작업 유형 선택</option>
+                  {WORK_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.value} · {option.intensity}</option>
+                  ))}
+                </select>
               </Field>
-              <Field label="이름" icon="user">
-                <input value={form.name} onChange={(e) => setValue('name', e.target.value)} type="text" placeholder="회사에 등록된 이름" readOnly={Boolean(verifiedEmployee)} required />
-              </Field>
-
-              <button className="btn employee-verify-button signup-gradient-cta" type="button" onClick={verify} disabled={Boolean(verifiedEmployee)}>
-                <span>사원 확인</span>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-              </button>
-
-              {verifiedEmployee && (
-                <div className="employee-verify-result" aria-live="polite">
-                  <div className="employee-verify-icon">✓</div>
-                  <div className="employee-verify-copy">
-                    <strong>소속이 확인되었습니다.</strong>
-                    <span>{verifiedEmployee.company}</span>
-                    <small>{verifiedEmployee.employeeCode} · {roleLabel(verifiedEmployee.role)}</small>
-                  </div>
-                  <button className="employee-reset-button" type="button" onClick={() => resetVerification(false)}>다시 입력</button>
+              {form.workType && (
+                <div className="signup-derived-info" role="status">
+                  작업 강도는 <strong>{workIntensityFor(form.workType)}</strong>으로 자동 설정됩니다.
                 </div>
               )}
+              <label className="check-row signup-workwear-check">
+                <input checked={form.hasWorkwear} onChange={(event) => setValue('hasWorkwear', event.target.checked)} type="checkbox" />
+                <span>작업복을 착용합니다.</span>
+              </label>
+            </section>
 
-              {verifyError && <p className="employee-verify-error" aria-live="polite">{verifyError}</p>}
-            </div>
+            <section className="signup-section-card">
+              <SectionHeading title="계정 정보" description="영문과 숫자를 포함한 8자 이상의 비밀번호를 설정해주세요." />
+              <Field label="비밀번호" icon="lock" error={errors.password}><input value={form.password} onChange={(event) => setValue('password', event.target.value)} type="password" minLength="8" maxLength="128" autoComplete="new-password" aria-invalid={Boolean(errors.password)} required /></Field>
+              <Field label="비밀번호 확인" icon="lock" error={errors.passwordConfirm}><input value={form.passwordConfirm} onChange={(event) => setValue('passwordConfirm', event.target.value)} type="password" minLength="8" maxLength="128" autoComplete="new-password" aria-invalid={Boolean(errors.passwordConfirm)} required /></Field>
+            </section>
 
-            <div id="signupDetails" className={`signup-details ${verifiedEmployee ? '' : 'is-locked'}`}>
-              <div className="signup-step2-heading">
-                <span className="signup-section-icon gradient" aria-hidden="true"><ShieldIcon check /></span>
-                <div>
-                  <span className="signup-card-kicker">STEP 02</span>
-                  <strong>필요한 정보만 입력해요</strong>
-                  <p>폭염 안전관리와 계정 사용에 필요한 최소 정보로 구성했습니다.</p>
-                </div>
-              </div>
-
-              <section className="signup-section-card">
-                <SectionHeading title="기본 정보" description="회사 등록 정보와 기본 프로필" />
-                <Field label="회사명" icon="company" readOnly>
-                  <input value={form.company} type="text" placeholder="사원 확인 후 자동 입력" readOnly />
-                </Field>
-                <Field label="성별" icon="user">
-                  <select value={form.gender} onChange={(e) => setValue('gender', e.target.value)} disabled={!verifiedEmployee} required>
-                    <option value="">선택</option><option value="남성">남성</option><option value="여성">여성</option><option value="기타">기타</option>
-                  </select>
-                </Field>
-              </section>
-
-              <section className="signup-section-card">
-                <SectionHeading title="연락처" description="안전 알림과 계정 확인에 사용" />
-                <Field label="전화번호" icon="phone">
-                  <input value={form.phone} onChange={(e) => setValue('phone', e.target.value)} type="tel" placeholder="010-1234-5678" disabled={!verifiedEmployee} required />
-                </Field>
-                <Field label="이메일" icon="email">
-                  <input value={form.email} onChange={(e) => setValue('email', e.target.value)} type="email" placeholder="example@email.com" disabled={!verifiedEmployee} required />
-                </Field>
-              </section>
-
-              {(!verifiedEmployee || isWorker) && (
-                <div className="worker-only-fields signup-worker-section">
-                  <section className="signup-section-card">
-                    <SectionHeading title="작업 정보" description="개인별 휴식 안내에 필요한 작업 조건" gradient />
-                    <Field label="연령" icon="clock">
-                      <input value={form.age} onChange={(e) => setValue('age', e.target.value)} type="number" min="18" max="80" placeholder="예: 42" disabled={!verifiedEmployee} required={Boolean(verifiedEmployee)} />
-                    </Field>
-                    <Field label="작업 유형" icon="work">
-                      <input value={form.jobType} onChange={(e) => setValue('jobType', e.target.value)} type="text" placeholder="예: 건설 / 토목 / 도로 작업" disabled={!verifiedEmployee} required={Boolean(verifiedEmployee)} />
-                    </Field>
-                    <Field label="작업 장소" icon="location">
-                      <input value={form.workplace} onChange={(e) => setValue('workplace', e.target.value)} type="text" placeholder="예: 부산 북항 현장" disabled={!verifiedEmployee} required={Boolean(verifiedEmployee)} />
-                    </Field>
-                    <Field label="작업복 착용 여부" icon="shirt">
-                      <select value={form.uniform} onChange={(e) => setValue('uniform', e.target.value)} disabled={!verifiedEmployee}>
-                        <option value="착용">착용</option><option value="미착용">미착용</option>
-                      </select>
-                    </Field>
-                  </section>
-                </div>
-              )}
-
-              <section className="signup-section-card">
-                <SectionHeading title="계정 정보" description="로그인에 사용할 비밀번호를 설정" />
-                <Field label="비밀번호" icon="lock">
-                  <input value={form.password} onChange={(e) => setValue('password', e.target.value)} type="password" placeholder="비밀번호" disabled={!verifiedEmployee} required />
-                </Field>
-                <Field label="비밀번호 확인" icon="lock">
-                  <input value={form.passwordConfirm} onChange={(e) => setValue('passwordConfirm', e.target.value)} type="password" placeholder="비밀번호 다시 입력" disabled={!verifiedEmployee} required />
-                </Field>
-              </section>
-
-              <div className="signup-minimum-note">
-                <ShieldIcon check />
-                <span>안전관리와 계정 운영에 필요한 최소 정보만 입력받습니다.</span>
-              </div>
-
-              <button className="btn btn-primary signup-submit-button" type="submit" disabled={!verifiedEmployee}>회원가입 완료</button>
-            </div>
+            <div className="signup-minimum-note"><ShieldIcon check /><span>비밀번호는 브라우저에 저장하지 않고 안전하게 서버로 전송됩니다.</span></div>
+            <button className="btn btn-primary signup-submit-button" type="submit" disabled={submitting}>{submitting ? '가입 처리 중...' : '회원가입 완료'}</button>
           </form>
 
-          <div className="signup-demo-box">
-            <strong>프로토타입 사원코드</strong>
-            <span>노동자: HB-W001 / 김철수</span>
-            <span>관리자: HB-A001 / 관리자</span>
-            <small>사원코드로 회사와 노동자·관리자 권한을 자동 구분합니다.</small>
-          </div>
-
-          <p className="switch-copy">
-            이미 계정이 있으신가요?{' '}
-            <button className="text-link" type="button" onClick={() => navigate('login')}>로그인</button>
-          </p>
+          <p className="switch-copy">이미 계정이 있으신가요?{' '}<button className="text-link" type="button" onClick={() => navigate('welcome')}>로그인</button></p>
         </div>
       </div>
     </section>

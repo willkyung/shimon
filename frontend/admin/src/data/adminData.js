@@ -1,28 +1,3 @@
-export const ADMIN_EMPLOYEE_DIRECTORY = {
-  'HB-A001': {
-    employeeCode: 'HB-A001',
-    name: '관리자',
-    company: '한빛건설',
-    role: 'admin',
-  },
-  'HB-A002': {
-    employeeCode: 'HB-A002',
-    name: '박지연',
-    company: '한빛건설',
-    role: 'admin',
-  },
-};
-
-export const DEMO_ADMIN = {
-  employeeCode: 'HB-A001',
-  name: '관리자',
-  company: '한빛건설',
-  email: 'admin@shimon.com',
-  phone: '010-0000-0000',
-  password: '1234',
-  role: 'admin',
-};
-
 export const WORKERS = [
   {
     id: 'W001',
