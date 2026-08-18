@@ -11,6 +11,7 @@ class Settings(BaseSettings):
         "postgresql+psycopg2://postgres:postgres@localhost:5432/shimon"
     )
     jwt_secret: SecretStr | None = None
+    jwt_access_token_expire_minutes: int = 60
     kma_service_key: SecretStr | None = None
 
     model_config = SettingsConfigDict(
