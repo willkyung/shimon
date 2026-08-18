@@ -43,27 +43,25 @@ function clearWorkerToken() {
 }
 
 function toWorkerViewModel(user) {
-  const profile = user.workerProfile;
-  const assignedSite = profile?.assignedSite;
   return {
     id: user.id,
     name: user.name,
     role: 'worker',
     employeeCode: user.employeeCode,
-    company: user.companyName || user.companyCode,
+    company: user.company || '',
     email: user.email,
     phone: user.phone || '',
-    age: profile?.age ?? null,
-    workplace: assignedSite?.name || '',
-    assignedSiteId: assignedSite?.id || null,
-    siteAddress: assignedSite?.address || '',
-    siteDistrict: assignedSite?.district || '',
-    siteLegalDong: assignedSite?.legalDong || '',
-    hasCoolingDevice: profile?.hasCoolingDevice ?? false,
-    jobType: profile?.workType || '',
-    workIntensity: profile?.workIntensity || '',
-    uniform: profile ? (profile.hasWorkwear ? 'O' : 'X') : '',
-    gender: profile?.gender || '',
+    age: user.age ?? null,
+    workplace: user.workplace || '',
+    assignedSiteId: user.assignedSiteId || null,
+    siteAddress: '',
+    siteDistrict: '',
+    siteLegalDong: '',
+    hasCoolingDevice: false,
+    jobType: user.jobType || '',
+    workIntensity: user.workIntensity || '',
+    uniform: user.ppeWorn ? 'O' : 'X',
+    gender: user.gender || '',
   };
 }
 
@@ -72,7 +70,7 @@ function toAdminViewModel(user) {
     id: user.id,
     name: user.name,
     role: 'admin',
-    company: user.companyName || user.companyCode,
+    company: user.company || '',
     email: user.email,
     phone: user.phone || '',
   };
@@ -482,7 +480,7 @@ export function WorkerProvider({ children }) {
 
   const login = useCallback(async ({ email, password, remember }) => {
     try {
-      const result = await authApi.login({ email, password });
+      const result = await authApi.login({ identifier: email, password });
       if (!['WORKER', 'ADMIN'].includes(result.user.role)) {
         showToast('지원하지 않는 계정 유형입니다.');
         return { ok: false, error: { code: 'FORBIDDEN' } };
@@ -570,9 +568,9 @@ export function WorkerProvider({ children }) {
         email: updates.email.trim().toLowerCase(),
         phone: updates.phone.trim() || null,
         gender: updates.gender,
-        workArea: updates.workplace.trim(),
-        workType: updates.jobType,
-        hasWorkwear: updates.uniform === 'O',
+        workplace: updates.workplace.trim(),
+        jobType: updates.jobType,
+        ppeWorn: updates.uniform === 'O',
       });
       setCurrentUser(toWorkerViewModel(user));
       navigate('mypage');
@@ -646,6 +644,7 @@ export function WorkerProvider({ children }) {
     snoozeRestAlert,
     login,
     signup,
+    verifyEmployee: authApi.verifyEmployee,
     saveProfile,
     logout,
     formatDuration,

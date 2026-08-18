@@ -33,6 +33,7 @@ def _to_me_response(user: User) -> MeResponse:
         gender=profile.gender if profile else None,
         job_type=profile.job_type if profile else None,
         workplace=workplace,
+        assigned_site_id=profile.assigned_site_id if profile else None,
         work_intensity=profile.work_intensity if profile else None,
         ppe_worn=profile.ppe_worn if profile else None,
     )

@@ -25,25 +25,27 @@ async function request(path, { token, ...options } = {}) {
   }
 
   const body = await response.json().catch(() => null);
-  if (!response.ok || !body?.success) {
+  if (!response.ok) {
     throw new ApiError(
       body?.error?.code || 'REQUEST_FAILED',
       body?.error?.message || '요청을 처리하지 못했습니다.',
       response.status,
     );
   }
-  return body.data;
+  // 인증(auth/users) API는 응답을 그대로(raw) 내려주고, 다른 API는
+  // {success, data}로 감싸서 내려준다. 둘 다 이 함수 하나로 처리한다.
+  return body && Object.prototype.hasOwnProperty.call(body, 'data') ? body.data : body;
 }
 
 export const authApi = {
-  login(payload) {
+  login({ email, password }) {
     return request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ identifier: email, password }),
     });
   },
   me(token) {
-    return request('/me', { token });
+    return request('/users/me', { token });
   },
 };
 

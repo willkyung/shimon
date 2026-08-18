@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useWorker } from '../context/WorkerContext';
 import { apiFieldErrors, validateProfileUpdateForm } from '../utils/authValidation';
-import { WORK_TYPE_OPTIONS, workIntensityFor } from '../utils/workProfile';
 
 export default function SettingsPage({ active }) {
   const { currentUser, navigate, saveProfile, showToast } = useWorker();
@@ -10,9 +9,9 @@ export default function SettingsPage({ active }) {
   const [form, setForm] = useState({
     jobType: '',
     workplace: '',
-    workIntensity: '보통',
+    workIntensity: 'MEDIUM',
     uniform: 'X',
-    gender: '남성',
+    gender: 'MALE',
     phone: '',
     email: '',
   });
@@ -22,9 +21,9 @@ export default function SettingsPage({ active }) {
     setForm({
       jobType: currentUser?.jobType || '',
       workplace: currentUser?.workplace || '',
-      workIntensity: currentUser?.workIntensity || '보통',
+      workIntensity: currentUser?.workIntensity || 'MEDIUM',
       uniform: currentUser?.uniform || 'X',
-      gender: currentUser?.gender || '남성',
+      gender: currentUser?.gender || 'MALE',
       phone: currentUser?.phone || '',
       email: currentUser?.email || '',
     });
@@ -34,14 +33,6 @@ export default function SettingsPage({ active }) {
   const setValue = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
-  };
-  const setWorkType = (workType) => {
-    setForm((current) => ({
-      ...current,
-      jobType: workType,
-      workIntensity: workIntensityFor(workType),
-    }));
-    setErrors((current) => ({ ...current, jobType: undefined }));
   };
 
   const save = async () => {
@@ -80,15 +71,14 @@ export default function SettingsPage({ active }) {
 
         <div className="settings-fields">
           <label className={`field ${errors.jobType ? 'has-error' : ''}`}><span>작업 유형</span>
-            <select value={form.jobType} onChange={(e) => setWorkType(e.target.value)}>
-              <option value="">작업 유형 선택</option>
-              {WORK_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.value}</option>)}
-            </select>
+            <input value={form.jobType} onChange={(e) => setValue('jobType', e.target.value)} type="text" placeholder="예: 토목 작업" />
             {errors.jobType && <small className="settings-field-error">{errors.jobType}</small>}
           </label>
           <label className={`field ${errors.workplace ? 'has-error' : ''}`}><span>작업 장소</span><input value={form.workplace} onChange={(e) => setValue('workplace', e.target.value)} type="text" placeholder="예: 부산 북항 현장" />{errors.workplace && <small className="settings-field-error">{errors.workplace}</small>}</label>
           <label className="field"><span>작업 강도</span>
-            <input value={form.workIntensity} type="text" readOnly />
+            <select value={form.workIntensity} onChange={(e) => setValue('workIntensity', e.target.value)}>
+              <option value="LOW">낮음</option><option value="MEDIUM">보통</option><option value="HIGH">높음</option>
+            </select>
           </label>
           <label className="field"><span>작업복 착용 여부</span>
             <select value={form.uniform} onChange={(e) => setValue('uniform', e.target.value)}>
@@ -97,7 +87,7 @@ export default function SettingsPage({ active }) {
           </label>
           <label className="field"><span>성별</span>
             <select value={form.gender} onChange={(e) => setValue('gender', e.target.value)}>
-              <option value="남성">남성</option><option value="여성">여성</option>
+              <option value="MALE">남성</option><option value="FEMALE">여성</option>
             </select>
           </label>
           <label className={`field ${errors.phone ? 'has-error' : ''}`}><span>전화번호</span><input value={form.phone} onChange={(e) => setValue('phone', e.target.value)} type="tel" placeholder="010-1234-5678" />{errors.phone && <small className="settings-field-error">{errors.phone}</small>}</label>

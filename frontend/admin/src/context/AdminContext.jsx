@@ -55,7 +55,7 @@ function toAdminViewModel(user) {
     id: user.id,
     name: user.name,
     role: 'admin',
-    company: user.companyCode,
+    company: user.company,
     employeeCode: user.employeeCode,
     email: user.email,
     phone: user.phone || '-',
