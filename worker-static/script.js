@@ -1,0 +1,5882 @@
+const demoUsers = {
+    '김철수': {
+        employeeCode: 'HB-W001',
+        name: '김철수',
+        password: '1234',
+        role: 'worker',
+        company: '한빛건설',
+        gender: '남성',
+        phone: '010-1234-5678',
+        email: 'worker@shimon.com',
+        age: 42,
+        jobType: '토목 작업',
+        workplace: '부산 북항 현장',
+        workIntensity: '보통',
+        uniform: '착용'
+    },
+
+    '관리자': {
+        employeeCode: 'HB-A001',
+        name: '관리자',
+        password: '1234',
+        role: 'admin',
+        company: '한빛건설',
+        gender: '남성',
+        phone: '010-0000-0000',
+        email: 'admin@shimon.com',
+        age: null,
+        jobType: '-',
+        workplace: '통합 관제 센터',
+        workIntensity: '-',
+        uniform: '-'
+    }
+};
+
+
+const employeeDirectory = {
+
+    'HB-W001': {
+        employeeCode: 'HB-W001',
+        name: '김철수',
+        company: '한빛건설',
+        role: 'worker',
+        jobType: '토목 작업',
+        workplace: '부산 북항 현장'
+    },
+
+    'HB-W002': {
+        employeeCode: 'HB-W002',
+        name: '김민준',
+        company: '한빛건설',
+        role: 'worker',
+        jobType: '건설 작업',
+        workplace: '강남 현장 A구역'
+    },
+
+    'HB-W003': {
+        employeeCode: 'HB-W003',
+        name: '이서준',
+        company: '한빛건설',
+        role: 'worker',
+        jobType: '건설 작업',
+        workplace: '강남 현장 B구역'
+    },
+
+    'HB-A001': {
+        employeeCode: 'HB-A001',
+        name: '관리자',
+        company: '한빛건설',
+        role: 'admin',
+        jobType: '-',
+        workplace: '통합 관제 센터'
+    },
+
+    'DS-W001': {
+        employeeCode: 'DS-W001',
+        name: '박민수',
+        company: '대성건설',
+        role: 'worker',
+        jobType: '도로 작업',
+        workplace: '대전 도로 현장'
+    }
+
+};
+
+
+/* =========================================
+   기본 상태
+========================================= */
+
+let currentUser =
+    null;
+
+let currentScreen =
+    'welcome';
+
+let lastMainScreen =
+    'home';
+
+let recordTab =
+    'work';
+
+let notificationEnabled =
+    true;
+
+let toastTimer =
+    null;
+
+let verifiedEmployee =
+    null;
+
+let accountDeletionInProgress = false;
+let deleteAccountTrigger = null;
+
+
+const remoteDatabaseConfig = window.SHIMON_CONFIG || {};
+const initialAuthLinkParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+const initialAuthQueryParams = new URLSearchParams(window.location.search);
+const initialAuthLinkType =
+    initialAuthLinkParams.get('type') || initialAuthQueryParams.get('type');
+let passwordRecoveryMode = initialAuthLinkType === 'recovery';
+let emailConfirmationMode =
+    initialAuthLinkType === 'signup' || initialAuthLinkType === 'email';
+const remoteDatabaseEnabled = Boolean(
+    remoteDatabaseConfig.supabaseUrl &&
+    remoteDatabaseConfig.supabasePublishableKey &&
+    window.supabase?.createClient
+);
+
+const remoteDatabase = remoteDatabaseEnabled
+    ? window.supabase.createClient(
+        remoteDatabaseConfig.supabaseUrl,
+        remoteDatabaseConfig.supabasePublishableKey
+    )
+    : null;
+
+if (remoteDatabaseEnabled) {
+    remoteDatabase.auth.onAuthStateChange((event) => {
+        if (event === 'PASSWORD_RECOVERY') {
+            passwordRecoveryMode = true;
+            window.setTimeout(showPasswordUpdatePanel, 0);
+        }
+
+        if (event === 'SIGNED_IN' && emailConfirmationMode) {
+            window.setTimeout(showEmailConfirmationComplete, 0);
+        }
+    });
+}
+
+
+function profileToAppUser(profile) {
+
+    if (!profile) {
+        return null;
+    }
+
+    return {
+        id: profile.id,
+        employeeCode: profile.employee_code,
+        name: profile.name,
+        role: profile.role,
+        company: profile.company,
+        gender: profile.gender,
+        phone: profile.phone,
+        email: profile.email,
+        age: profile.age,
+        jobType: profile.job_type,
+        workplace: profile.workplace,
+        workIntensity: profile.work_intensity,
+        uniform: profile.uniform,
+        healthCondition: profile.health_condition
+    };
+
+}
+
+
+async function getRemoteCurrentUser() {
+
+    const { data: sessionData, error: sessionError } =
+        await remoteDatabase.auth.getSession();
+
+    if (sessionError) {
+        throw sessionError;
+    }
+
+    const authUser = sessionData.session?.user;
+
+    if (!authUser) {
+        return null;
+    }
+
+    const { data: profile, error } = await remoteDatabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    if (!profile) {
+        const profileError = new Error('로그인 계정에 연결된 회원 프로필이 없습니다.');
+        profileError.code = 'profile_not_found';
+        throw profileError;
+    }
+
+    return profileToAppUser(profile);
+
+}
+
+
+function isDuplicateSignupError(error) {
+
+    const duplicateCodes = [
+        'duplicate_email',
+        'email_exists',
+        'user_already_exists',
+        'identity_already_exists'
+    ];
+
+    const message = String(error?.message || '').toLowerCase();
+
+    return (
+        duplicateCodes.includes(error?.code) ||
+        message.includes('already registered') ||
+        message.includes('already exists')
+    );
+
+}
+
+
+/* =========================================
+   홈 화면 AI 추정 심부체온
+   - 실제 서비스에서는 XGBoost API 결과로 갱신
+========================================= */
+
+let estimatedCoreTemp =
+    37.6;
+
+function getEstimatedCoreTempLevel(value) {
+
+    if (value >= 38.0) {
+        return { level: 'high', label: '고위험' };
+    }
+
+    if (value >= 37.5) {
+        return { level: 'caution', label: '주의' };
+    }
+
+    return { level: 'normal', label: '정상' };
+
+}
+
+function updateHomeEstimatedCoreTemp(value = estimatedCoreTemp) {
+
+    const numericValue =
+        Number(value);
+
+    if (!Number.isFinite(numericValue)) {
+        return;
+    }
+
+    estimatedCoreTemp =
+        numericValue;
+
+    const state =
+        getEstimatedCoreTempLevel(numericValue);
+
+    const card =
+        document.getElementById('homeCoreTempCard');
+
+    const valueEl =
+        document.getElementById('homeEstimatedCoreTemp');
+
+    const stateEl =
+        document.getElementById('homeEstimatedCoreTempState');
+
+    if (card) {
+        card.dataset.level = state.level;
+    }
+
+    if (valueEl) {
+        valueEl.textContent = `${numericValue.toFixed(1)}°C`;
+    }
+
+    if (stateEl) {
+        stateEl.textContent = state.label;
+    }
+
+
+    const workCard =
+        document.getElementById(
+            'workCoreTempCard'
+        );
+
+    const workValueEl =
+        document.getElementById(
+            'workEstimatedCoreTemp'
+        );
+
+    const workStateEl =
+        document.getElementById(
+            'workEstimatedCoreTempState'
+        );
+
+    if (workCard) {
+        workCard.dataset.level =
+            state.level;
+    }
+
+    if (workValueEl) {
+        workValueEl.textContent =
+            `${numericValue.toFixed(1)}℃`;
+    }
+
+    if (workStateEl) {
+        workStateEl.textContent =
+            state.label;
+    }
+
+}
+
+/*
+   XGBoost API 연결 예시:
+   updateHomeEstimatedCoreTemp(apiResponse.estimatedCoreTemp);
+*/
+
+
+
+/* =========================================
+   작업 / 휴식 설정
+========================================= */
+
+let WORK_TARGET_SECONDS =
+    2 * 60 * 60;
+
+let REST_TARGET_SECONDS =
+    20 * 60;
+
+
+let workSeconds =
+    0;
+
+let workTimerId =
+    null;
+
+let workSessionStartedAt =
+    null;
+
+let workState =
+    'idle';
+
+let workLimitAlertShown =
+    false;
+
+let resumeWorkAfterRest =
+    false;
+
+
+let restSeconds =
+    REST_TARGET_SECONDS;
+
+let restTimerId =
+    null;
+
+let restStartedAt =
+    null;
+
+
+/* =========================================
+   기록 데이터
+========================================= */
+
+const workRecords = [
+
+    {
+        time: '13:10 - 14:05',
+        duration: '55분',
+        temp: 33,
+        coreTemp: 37.6
+    },
+
+    {
+        time: '10:20 - 11:30',
+        duration: '70분',
+        temp: 31,
+        coreTemp: 37.3
+    },
+
+    {
+        time: '08:00 - 09:00',
+        duration: '60분',
+        temp: 29,
+        coreTemp: 37.0
+    }
+
+];
+
+
+const restRecords = [
+
+    {
+        time: '14:05 - 14:25',
+        duration: '20분',
+        temp: 35,
+        coreTemp: 37.8
+    },
+
+    {
+        time: '11:30 - 11:50',
+        duration: '20분',
+        temp: 32,
+        coreTemp: 37.4
+    },
+
+    {
+        time: '09:00 - 09:20',
+        duration: '20분',
+        temp: 31,
+        coreTemp: 37.2
+    }
+
+];
+
+
+/* =========================================
+   노동자 화면
+========================================= */
+
+const workerScreens = [
+
+    'welcome',
+    'login',
+    'recovery',
+    'email-confirmed',
+    'signup',
+    'home',
+    'work-progress',
+    'rest-alert',
+    'rest-progress',
+    'record',
+    'mypage',
+    'settings',
+    'notifications'
+
+];
+
+
+const mainScreens = [
+
+    'home',
+    'work-progress',
+    'rest-progress',
+    'record',
+    'mypage'
+
+];
+
+
+/* =========================================
+   공통 함수
+========================================= */
+
+function setText(id, value) {
+
+    const element =
+        document.getElementById(
+            id
+        );
+
+
+    if (element) {
+
+        element.textContent =
+            value;
+
+    }
+
+}
+
+
+function formatTime(date) {
+
+    const hours =
+        String(
+            date.getHours()
+        ).padStart(
+            2,
+            '0'
+        );
+
+
+    const minutes =
+        String(
+            date.getMinutes()
+        ).padStart(
+            2,
+            '0'
+        );
+
+
+    return `${hours}:${minutes}`;
+
+}
+
+
+function formatDuration(totalSeconds) {
+
+    const hours =
+        String(
+
+            Math.floor(
+                totalSeconds /
+                3600
+            )
+
+        ).padStart(
+            2,
+            '0'
+        );
+
+
+    const minutes =
+        String(
+
+            Math.floor(
+                (
+                    totalSeconds %
+                    3600
+                ) /
+                60
+            )
+
+        ).padStart(
+            2,
+            '0'
+        );
+
+
+    const seconds =
+        String(
+
+            totalSeconds %
+            60
+
+        ).padStart(
+            2,
+            '0'
+        );
+
+
+    return (
+        `${hours}:${minutes}:${seconds}`
+    );
+
+}
+
+
+/* =========================================
+   토스트
+========================================= */
+
+function showToast(message) {
+
+    const toast =
+        document.getElementById(
+            'toast'
+        );
+
+
+    if (!toast) {
+
+        console.log(
+            message
+        );
+
+        return;
+
+    }
+
+
+    toast.textContent =
+        message;
+
+
+    toast.classList.add(
+        'show'
+    );
+
+
+    if (toastTimer) {
+
+        clearTimeout(
+            toastTimer
+        );
+
+    }
+
+
+    toastTimer =
+        setTimeout(
+
+            () => {
+
+                toast.classList.remove(
+                    'show'
+                );
+
+            },
+
+            2200
+
+        );
+
+}
+
+
+/* =========================================
+   노동자 화면 전환
+========================================= */
+
+function showWorkerScreen(
+    screenName
+) {
+
+    currentScreen =
+        screenName;
+
+
+    if (
+        mainScreens.includes(
+            screenName
+        )
+    ) {
+
+        lastMainScreen =
+            screenName;
+
+    }
+
+
+    workerScreens.forEach(
+
+        (screen) => {
+
+            const element =
+                document.getElementById(
+                    `screen-${screen}`
+                );
+
+
+            if (!element) {
+
+                return;
+
+            }
+
+
+            element.classList.toggle(
+
+                'active',
+
+                screen ===
+                screenName
+
+            );
+
+        }
+
+    );
+
+
+    const header =
+        document.getElementById(
+            'workerHeader'
+        );
+
+
+    const bottomNav =
+        document.getElementById(
+            'bottomNav'
+        );
+
+
+    const loggedInScreen =
+
+        ![
+            'welcome',
+            'login',
+            'recovery',
+            'email-confirmed',
+            'signup'
+        ].includes(
+            screenName
+        );
+
+
+    if (header) {
+
+        header.classList.toggle(
+
+            'hidden',
+
+            !loggedInScreen ||
+
+            screenName ===
+            'rest-alert'
+
+        );
+
+    }
+
+
+    if (bottomNav) {
+
+        bottomNav.classList.toggle(
+
+            'hidden',
+
+            !loggedInScreen ||
+
+            screenName ===
+            'rest-alert' ||
+
+            screenName ===
+            'notifications' ||
+
+            screenName ===
+            'settings'
+
+        );
+
+    }
+
+
+    document
+        .querySelectorAll(
+            '.nav-item'
+        )
+        .forEach(
+
+            (button) => {
+
+                const target =
+                    button.dataset.screen;
+
+
+                const isActive =
+
+                    target ===
+                    screenName ||
+
+                    (
+                        target ===
+                        'home' &&
+
+                        [
+                            'work-progress',
+                            'rest-progress'
+                        ].includes(
+                            screenName
+                        )
+                    );
+
+
+                button.classList.toggle(
+
+                    'active',
+
+                    isActive
+
+                );
+
+            }
+
+        );
+
+
+    if (
+        screenName ===
+        'record'
+    ) {
+
+        renderRecords();
+
+    }
+
+
+    if (
+        screenName ===
+        'mypage'
+    ) {
+
+        syncUserUI();
+
+    }
+
+
+    if (
+        screenName ===
+        'home'
+    ) {
+
+        updateHomeWorkStatus();
+
+    }
+
+
+    if (
+        screenName ===
+        'work-progress'
+    ) {
+
+        updateHomeEstimatedCoreTemp();
+
+    }
+
+
+    if (
+        screenName ===
+        'rest-progress'
+    ) {
+
+        const restProgressScreen =
+            document.getElementById(
+                'screen-rest-progress'
+            );
+
+        if (restProgressScreen) {
+            requestAnimationFrame(
+                () => {
+                    restProgressScreen.scrollTop = 0;
+                }
+            );
+        }
+
+    }
+
+}
+
+
+/* =========================================
+   사원코드 인증
+========================================= */
+
+function normalizeEmployeeCode(
+    value
+) {
+
+    return String(
+        value ||
+        ''
+    )
+        .trim()
+        .toUpperCase()
+        .replace(
+            /\s+/g,
+            ''
+        );
+
+}
+
+
+function getRoleLabel(role) {
+
+    return (
+        role ===
+        'admin'
+
+            ? '관리자'
+
+            : '노동자'
+    );
+
+}
+
+
+function setEmployeeVerifyError(
+    message = ''
+) {
+
+    const error =
+        document.getElementById(
+            'employeeVerifyError'
+        );
+
+
+    if (!error) {
+
+        return;
+
+    }
+
+
+    error.textContent =
+        message;
+
+
+    error.classList.toggle(
+
+        'hidden',
+
+        !message
+
+    );
+
+}
+
+
+
+function setSignupStep(step = 1) {
+
+    const numericStep =
+        Number(step) === 2
+            ? 2
+            : 1;
+
+    const stepper =
+        document.getElementById(
+            'signupStepper'
+        );
+
+    if (!stepper) {
+        return;
+    }
+
+    stepper.dataset.step =
+        String(numericStep);
+
+    stepper
+        .querySelectorAll(
+            '[data-signup-step]'
+        )
+        .forEach(
+            (item) => {
+
+                const itemStep =
+                    Number(
+                        item.dataset.signupStep
+                    );
+
+                item.classList.toggle(
+                    'is-active',
+                    itemStep === numericStep
+                );
+
+                item.classList.toggle(
+                    'is-complete',
+                    itemStep < numericStep
+                );
+
+                if (
+                    itemStep === numericStep
+                ) {
+                    item.setAttribute(
+                        'aria-current',
+                        'step'
+                    );
+                }
+                else {
+                    item.removeAttribute(
+                        'aria-current'
+                    );
+                }
+
+            }
+        );
+
+    const connector =
+        stepper.querySelector(
+            '.signup-step-connector'
+        );
+
+    connector?.classList.toggle(
+        'is-complete',
+        numericStep >= 2
+    );
+
+}
+
+
+function setSignupDetailsEnabled(
+    enabled
+) {
+
+    
+    setSignupStep(enabled ? 2 : 1);
+const details =
+        document.getElementById(
+            'signupDetails'
+        );
+
+
+    if (details) {
+
+        details.classList.toggle(
+
+            'is-locked',
+
+            !enabled
+
+        );
+
+    }
+
+
+    [
+        'signupGender',
+        'signupPhone',
+        'signupEmail',
+        'signupPassword',
+        'signupPasswordConfirm',
+        'signupSubmitButton'
+    ].forEach(
+
+        (id) => {
+
+            const element =
+                document.getElementById(
+                    id
+                );
+
+
+            if (element) {
+
+                element.disabled =
+                    !enabled;
+
+            }
+
+        }
+
+    );
+
+
+    toggleWorkerFields();
+
+}
+
+
+function toggleWorkerFields() {
+
+    const role =
+        verifiedEmployee?.role ||
+        '';
+
+
+    const workerOnly =
+        document.getElementById(
+            'workerOnlyFields'
+        );
+
+
+    if (!workerOnly) {
+
+        return;
+
+    }
+
+
+    const isVerified =
+        Boolean(
+            verifiedEmployee
+        );
+
+
+    const isWorker =
+        role ===
+        'worker';
+
+
+    workerOnly.classList.toggle(
+
+        'hidden',
+
+        isVerified &&
+        !isWorker
+
+    );
+
+
+    [
+        'signupAge',
+        'signupJobType',
+        'signupWorkplace',
+        'signupUniform'
+    ].forEach(
+
+        (id) => {
+
+            const field =
+                document.getElementById(
+                    id
+                );
+
+
+            if (!field) {
+
+                return;
+
+            }
+
+
+            field.disabled =
+                !(
+                    isVerified &&
+                    isWorker
+                );
+
+
+            field.required =
+                isVerified &&
+                isWorker;
+
+        }
+
+    );
+
+}
+
+
+/* =========================================
+   사원 확인
+========================================= */
+
+function verifyEmployeeCode() {
+
+    const codeInput =
+        document.getElementById(
+            'signupEmployeeCode'
+        );
+
+
+    const nameInput =
+        document.getElementById(
+            'signupName'
+        );
+
+
+    const result =
+        document.getElementById(
+            'employeeVerifyResult'
+        );
+
+
+    const employeeCode =
+        normalizeEmployeeCode(
+            codeInput?.value
+        );
+
+
+    const name =
+        nameInput?.value.trim() ||
+        '';
+
+
+    setEmployeeVerifyError(
+        ''
+    );
+
+
+    if (
+        !employeeCode ||
+        !name
+    ) {
+
+        setEmployeeVerifyError(
+            '사원코드와 이름을 모두 입력해주세요.'
+        );
+
+
+        showToast(
+            '사원코드와 이름을 입력해주세요.'
+        );
+
+
+        return;
+
+    }
+
+
+    const employee =
+        employeeDirectory[
+            employeeCode
+        ];
+
+
+    if (!employee) {
+
+        verifiedEmployee =
+            null;
+
+
+        setSignupDetailsEnabled(
+            false
+        );
+
+
+        result?.classList.add(
+            'hidden'
+        );
+
+
+        setEmployeeVerifyError(
+            '등록되지 않은 사원코드입니다. 현장 관리자에게 문의해주세요.'
+        );
+
+
+        showToast(
+            '등록되지 않은 사원코드입니다.'
+        );
+
+
+        return;
+
+    }
+
+
+    if (employee.role !== 'worker') {
+
+        verifiedEmployee = null;
+        setSignupDetailsEnabled(false);
+        result?.classList.add('hidden');
+        setEmployeeVerifyError('관리자 계정은 관리자 전용 화면에서 가입해주세요.');
+        showToast('근로자 사원코드만 사용할 수 있습니다.');
+        return;
+
+    }
+
+
+    if (
+        employee.name !==
+        name
+    ) {
+
+        verifiedEmployee =
+            null;
+
+
+        setSignupDetailsEnabled(
+            false
+        );
+
+
+        result?.classList.add(
+            'hidden'
+        );
+
+
+        setEmployeeVerifyError(
+            '사원코드와 회사에 등록된 이름이 일치하지 않습니다.'
+        );
+
+
+        showToast(
+            '사원코드와 이름을 확인해주세요.'
+        );
+
+
+        return;
+
+    }
+
+
+    verifiedEmployee = {
+        ...employee
+    };
+
+
+    if (codeInput) {
+
+        codeInput.value =
+            employeeCode;
+
+
+        codeInput.readOnly =
+            true;
+
+    }
+
+
+    if (nameInput) {
+
+        nameInput.value =
+            employee.name;
+
+
+        nameInput.readOnly =
+            true;
+
+    }
+
+
+    const roleInput =
+        document.getElementById(
+            'signupRole'
+        );
+
+
+    const companyInput =
+        document.getElementById(
+            'signupCompany'
+        );
+
+
+    const jobTypeInput =
+        document.getElementById(
+            'signupJobType'
+        );
+
+
+    const workplaceInput =
+        document.getElementById(
+            'signupWorkplace'
+        );
+
+
+    if (roleInput) {
+
+        roleInput.value =
+            employee.role;
+
+    }
+
+
+    if (companyInput) {
+
+        companyInput.value =
+            employee.company;
+
+    }
+
+
+    if (
+        jobTypeInput &&
+        employee.role ===
+        'worker'
+    ) {
+
+        jobTypeInput.value =
+            employee.jobType ||
+            '';
+
+    }
+
+
+    if (
+        workplaceInput &&
+        employee.role ===
+        'worker'
+    ) {
+
+        workplaceInput.value =
+            employee.workplace ||
+            '';
+
+    }
+
+
+    setText(
+
+        'verifiedCompanyText',
+
+        employee.company
+
+    );
+
+
+    setText(
+
+        'verifiedEmployeeCodeText',
+
+        employee.employeeCode
+
+    );
+
+
+    setText(
+
+        'verifiedRoleText',
+
+        getRoleLabel(
+            employee.role
+        )
+
+    );
+
+
+    result?.classList.remove(
+        'hidden'
+    );
+
+
+    setSignupDetailsEnabled(
+        true
+    );
+
+
+    setEmployeeVerifyError(
+        ''
+    );
+
+
+    showToast(
+
+        `${employee.company} ${getRoleLabel(employee.role)}로 확인되었습니다.`
+
+    );
+
+}
+
+
+/* =========================================
+   사원 인증 초기화
+========================================= */
+
+function resetEmployeeVerification(
+    clearValues = false
+) {
+
+    verifiedEmployee =
+        null;
+
+
+    const codeInput =
+        document.getElementById(
+            'signupEmployeeCode'
+        );
+
+
+    const nameInput =
+        document.getElementById(
+            'signupName'
+        );
+
+
+    const companyInput =
+        document.getElementById(
+            'signupCompany'
+        );
+
+
+    const roleInput =
+        document.getElementById(
+            'signupRole'
+        );
+
+
+    const result =
+        document.getElementById(
+            'employeeVerifyResult'
+        );
+
+
+    const form =
+        document.getElementById(
+            'signupForm'
+        );
+
+
+    if (codeInput) {
+
+        codeInput.readOnly =
+            false;
+
+
+        if (clearValues) {
+
+            codeInput.value =
+                '';
+
+        }
+
+    }
+
+
+    if (nameInput) {
+
+        nameInput.readOnly =
+            false;
+
+
+        if (clearValues) {
+
+            nameInput.value =
+                '';
+
+        }
+
+    }
+
+
+    if (companyInput) {
+
+        companyInput.value =
+            '';
+
+    }
+
+
+    if (roleInput) {
+
+        roleInput.value =
+            '';
+
+    }
+
+
+    if (
+        clearValues &&
+        form
+    ) {
+
+        [
+            'signupGender',
+            'signupPhone',
+            'signupEmail',
+            'signupAge',
+            'signupJobType',
+            'signupWorkplace',
+            'signupPassword',
+            'signupPasswordConfirm'
+        ].forEach(
+
+            (id) => {
+
+                const field =
+                    document.getElementById(
+                        id
+                    );
+
+
+                if (field) {
+
+                    field.value =
+                        '';
+
+                }
+
+            }
+
+        );
+
+
+        const uniform =
+            document.getElementById(
+                'signupUniform'
+            );
+
+
+        if (uniform) {
+
+            uniform.value =
+                '착용';
+
+        }
+
+    }
+
+
+    result?.classList.add(
+        'hidden'
+    );
+
+
+    setEmployeeVerifyError(
+        ''
+    );
+
+
+    setSignupDetailsEnabled(
+        false
+    );
+
+
+    if (!clearValues) {
+
+        codeInput?.focus();
+
+    }
+
+}
+
+
+/* =========================================
+   회원가입
+========================================= */
+
+async function handleSignup(event) {
+
+    event.preventDefault();
+
+
+    if (!verifiedEmployee) {
+
+        showToast(
+            '먼저 사원코드 확인을 완료해주세요.'
+        );
+
+
+        setEmployeeVerifyError(
+            '회원가입 전에 사원 확인이 필요합니다.'
+        );
+
+
+        return;
+
+    }
+
+
+    const employeeCode =
+        normalizeEmployeeCode(
+
+            document
+                .getElementById(
+                    'signupEmployeeCode'
+                )
+                ?.value
+
+        );
+
+
+    const name =
+        document
+            .getElementById(
+                'signupName'
+            )
+            ?.value
+            .trim() ||
+        '';
+
+
+    if (
+        employeeCode !==
+        verifiedEmployee.employeeCode ||
+
+        name !==
+        verifiedEmployee.name
+    ) {
+
+        resetEmployeeVerification(
+            false
+        );
+
+
+        setEmployeeVerifyError(
+            '사원 정보가 변경되었습니다. 다시 확인해주세요.'
+        );
+
+
+        return;
+
+    }
+
+
+    const role =
+        verifiedEmployee.role;
+
+
+    const company =
+        verifiedEmployee.company;
+
+
+    const gender =
+        document
+            .getElementById(
+                'signupGender'
+            )
+            ?.value ||
+        '';
+
+
+    const phone =
+        document
+            .getElementById(
+                'signupPhone'
+            )
+            ?.value
+            .trim() ||
+        '';
+
+
+    const email =
+        document
+            .getElementById(
+                'signupEmail'
+            )
+            ?.value
+            .trim() ||
+        '';
+
+
+    const password =
+        document
+            .getElementById(
+                'signupPassword'
+            )
+            ?.value ||
+        '';
+
+
+    const confirmPassword =
+        document
+            .getElementById(
+                'signupPasswordConfirm'
+            )
+            ?.value ||
+        '';
+
+
+    if (password.length < 6) {
+
+        showToast('비밀번호는 6자 이상 입력해주세요.');
+        return;
+
+    }
+
+
+    if (
+        password !==
+        confirmPassword
+    ) {
+
+        showToast(
+            '비밀번호와 비밀번호 확인이 일치하지 않습니다.'
+        );
+
+
+        return;
+
+    }
+
+
+    const age =
+
+        role ===
+        'worker'
+
+            ? Number(
+
+                document
+                    .getElementById(
+                        'signupAge'
+                    )
+                    ?.value ||
+                0
+
+            )
+
+            : null;
+
+
+    if (
+        role ===
+        'worker' &&
+
+        (
+            !age ||
+            age < 18 ||
+            age > 80
+        )
+    ) {
+
+        showToast(
+            '연령을 확인해주세요.'
+        );
+
+
+        return;
+
+    }
+
+
+    const user = {
+
+        employeeCode,
+
+        name,
+
+        password,
+
+        role,
+
+        company,
+
+        gender,
+
+        phone,
+
+        email,
+
+        age,
+
+
+        jobType:
+
+            role ===
+            'worker'
+
+                ? document
+                    .getElementById(
+                        'signupJobType'
+                    )
+                    ?.value
+                    .trim() ||
+
+                verifiedEmployee.jobType ||
+
+                ''
+
+                : '-',
+
+
+        workplace:
+
+            role ===
+            'worker'
+
+                ? document
+                    .getElementById(
+                        'signupWorkplace'
+                    )
+                    ?.value
+                    .trim() ||
+
+                verifiedEmployee.workplace ||
+
+                ''
+
+                : '통합 관제 센터',
+
+
+        workIntensity:
+
+            role ===
+            'worker'
+
+                ? '보통'
+
+                : '-',
+
+
+        uniform:
+
+            role ===
+            'worker'
+
+                ? document
+                    .getElementById(
+                        'signupUniform'
+                    )
+                    ?.value ||
+
+                '착용'
+
+                : '-',
+
+
+        healthCondition: '없음'
+
+    };
+
+
+    if (!remoteDatabaseEnabled) {
+
+        showToast('Supabase 연결 설정을 확인해주세요.');
+        return;
+
+    }
+
+
+    try {
+
+        const { data, error } = await remoteDatabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    employeeCode: user.employeeCode,
+                    name: user.name,
+                    role: 'worker',
+                    company: user.company,
+                    gender: user.gender,
+                    phone: user.phone,
+                    age: user.age,
+                    jobType: user.jobType,
+                    workplace: user.workplace,
+                    workIntensity: user.workIntensity,
+                    uniform: user.uniform,
+                    healthCondition: user.healthCondition
+                }
+            }
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        if (
+            data.user &&
+            Array.isArray(data.user.identities) &&
+            data.user.identities.length === 0
+        ) {
+            const duplicateError = new Error('User already registered');
+            duplicateError.code = 'duplicate_email';
+            throw duplicateError;
+        }
+
+        if (data.session) {
+            await remoteDatabase.auth.signOut();
+        }
+
+    }
+    catch (error) {
+
+        console.error('Supabase 회원가입 오류', error);
+
+        if (isDuplicateSignupError(error)) {
+            showToast('이미 사용 중인 이메일입니다.');
+        }
+        else if (error?.status === 429 || error?.code === 'over_email_send_rate_limit') {
+            showToast('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
+        }
+        else if (String(error?.message || '').includes('Database error saving new user')) {
+            showToast('이미 가입된 사원코드이거나 회원정보가 중복되었습니다.');
+        }
+        else {
+            showToast('회원가입 중 오류가 발생했습니다.');
+        }
+
+        return;
+
+    }
+
+
+    const loginName =
+        document.getElementById(
+            'loginName'
+        );
+
+
+    if (loginName) {
+
+        loginName.value =
+            email;
+
+    }
+
+
+    showToast(
+        '회원가입이 완료되었습니다. 로그인해주세요.'
+    );
+
+
+    resetEmployeeVerification(
+        true
+    );
+
+
+    showWorkerScreen(
+        'login'
+    );
+
+}
+
+
+/* =========================================
+   로그인
+========================================= */
+
+function openAccountRecovery(tabName = 'account') {
+    showWorkerScreen('recovery');
+    showRecoveryTab(tabName);
+}
+
+
+function showRecoveryTab(tabName) {
+    const showAccount = tabName === 'account';
+    document.getElementById('recoveryTabs')?.classList.remove('hidden');
+    document.getElementById('accountRecoveryPanel')?.classList.toggle('hidden', !showAccount);
+    document.getElementById('passwordRecoveryPanel')?.classList.toggle('hidden', showAccount);
+    document.getElementById('passwordUpdatePanel')?.classList.add('hidden');
+    document.getElementById('accountRecoveryTab')?.classList.toggle('active', showAccount);
+    document.getElementById('passwordRecoveryTab')?.classList.toggle('active', !showAccount);
+}
+
+
+function setRecoveryButtonBusy(id, busy, busyText, normalText) {
+    const button = document.getElementById(id);
+    if (!button) return;
+    button.disabled = busy;
+    button.textContent = busy ? busyText : normalText;
+}
+
+
+async function handleAccountRecovery(event) {
+    event.preventDefault();
+
+    const employeeCode = document.getElementById('recoveryEmployeeCode')?.value.trim() || '';
+    const name = document.getElementById('recoveryName')?.value.trim() || '';
+    const phone = document.getElementById('recoveryPhone')?.value.trim() || '';
+    const result = document.getElementById('accountRecoveryResult');
+
+    setRecoveryButtonBusy('accountRecoveryButton', true, '확인 중...', '가입 이메일 확인');
+
+    try {
+        const { data, error } = await remoteDatabase.rpc('find_shimon_account', {
+            p_employee_code: employeeCode,
+            p_name: name,
+            p_phone: phone
+        });
+
+        if (error) throw error;
+
+        if (result) {
+            result.textContent = data
+                ? `가입한 이메일은 ${data} 입니다.`
+                : '입력한 정보와 일치하는 계정을 찾지 못했습니다.';
+            result.classList.remove('hidden');
+        }
+    }
+    catch (error) {
+        console.error('이메일 찾기 오류', error);
+        showToast('이메일을 확인하지 못했습니다. SQL 설정을 확인해주세요.');
+    }
+    finally {
+        setRecoveryButtonBusy('accountRecoveryButton', false, '확인 중...', '가입 이메일 확인');
+    }
+}
+
+
+function getPasswordRecoveryRedirectUrl() {
+    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+        return `${window.location.origin}${window.location.pathname}`;
+    }
+    return null;
+}
+
+
+async function handlePasswordRecoveryRequest(event) {
+    event.preventDefault();
+
+    const email = document.getElementById('recoveryEmail')?.value.trim() || '';
+    const redirectTo = getPasswordRecoveryRedirectUrl();
+
+    if (!redirectTo) {
+        showToast('비밀번호 찾기는 Live Server로 실행한 뒤 사용할 수 있습니다.');
+        return;
+    }
+
+    setRecoveryButtonBusy('passwordRecoveryButton', true, '메일 보내는 중...', '재설정 메일 받기');
+
+    try {
+        const { error } = await remoteDatabase.auth.resetPasswordForEmail(email, { redirectTo });
+        if (error) throw error;
+        showToast('가입된 이메일이라면 재설정 메일이 전송됩니다.');
+    }
+    catch (error) {
+        console.error('비밀번호 재설정 메일 오류', error);
+        if (error?.status === 429 || error?.code === 'over_email_send_rate_limit') {
+            showToast('이메일 발송 한도를 초과했습니다. 한 시간 후 다시 시도해주세요.');
+        }
+        else {
+            showToast('재설정 메일을 보내지 못했습니다.');
+        }
+    }
+    finally {
+        setRecoveryButtonBusy('passwordRecoveryButton', false, '메일 보내는 중...', '재설정 메일 받기');
+    }
+}
+
+
+function showPasswordUpdatePanel() {
+    showWorkerScreen('recovery');
+    document.getElementById('recoveryTabs')?.classList.add('hidden');
+    document.getElementById('accountRecoveryPanel')?.classList.add('hidden');
+    document.getElementById('passwordRecoveryPanel')?.classList.add('hidden');
+    document.getElementById('passwordUpdatePanel')?.classList.remove('hidden');
+}
+
+
+async function handlePasswordUpdate(event) {
+    event.preventDefault();
+
+    const password = document.getElementById('newRecoveryPassword')?.value || '';
+    const confirmPassword = document.getElementById('newRecoveryPasswordConfirm')?.value || '';
+
+    if (password.length < 6) {
+        showToast('새 비밀번호는 6자 이상 입력해주세요.');
+        return;
+    }
+
+    if (password !== confirmPassword) {
+        showToast('새 비밀번호가 서로 일치하지 않습니다.');
+        return;
+    }
+
+    setRecoveryButtonBusy('passwordUpdateButton', true, '변경 중...', '비밀번호 변경');
+
+    try {
+        const { error } = await remoteDatabase.auth.updateUser({ password });
+        if (error) throw error;
+        await remoteDatabase.auth.signOut();
+        passwordRecoveryMode = false;
+        window.history.replaceState({}, document.title, window.location.pathname);
+        showWorkerScreen('login');
+        showToast('비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.');
+    }
+    catch (error) {
+        console.error('비밀번호 변경 오류', error);
+        showToast('비밀번호를 변경하지 못했습니다. 재설정 링크를 다시 받아주세요.');
+    }
+    finally {
+        setRecoveryButtonBusy('passwordUpdateButton', false, '변경 중...', '비밀번호 변경');
+    }
+}
+
+
+function showEmailConfirmationComplete() {
+    showWorkerScreen('email-confirmed');
+}
+
+
+async function finishEmailConfirmation() {
+    const button = document.getElementById('emailConfirmedLoginButton');
+    if (button) {
+        button.disabled = true;
+        button.textContent = '이동 중...';
+    }
+
+    try {
+        await remoteDatabase.auth.signOut();
+    }
+    catch (error) {
+        console.error('인증 세션 정리 오류', error);
+    }
+
+    emailConfirmationMode = false;
+    window.history.replaceState({}, document.title, window.location.pathname);
+    currentUser = null;
+    showWorkerScreen('login');
+    showToast('인증이 완료되었습니다. 로그인해주세요.');
+
+    if (button) {
+        button.disabled = false;
+        button.textContent = '로그인 화면으로 이동';
+    }
+}
+
+
+async function handleLogin(event) {
+
+    event.preventDefault();
+
+
+    const email =
+        document
+            .getElementById(
+                'loginName'
+            )
+            ?.value
+            .trim() ||
+        '';
+
+
+    const password =
+        document
+            .getElementById(
+                'loginPassword'
+            )
+            ?.value ||
+        '';
+
+
+    if (!remoteDatabaseEnabled) {
+
+        showToast('Supabase 연결 설정을 확인해주세요.');
+        return;
+
+    }
+
+
+    let user = null;
+
+
+    try {
+
+        const { error } = await remoteDatabase.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        user = await getRemoteCurrentUser();
+
+        if (user?.role !== 'worker') {
+            await remoteDatabase.auth.signOut();
+            showToast('근로자 계정만 로그인할 수 있습니다.');
+            return;
+        }
+
+    }
+    catch (error) {
+
+        console.error('Supabase 로그인 오류', error);
+
+        if (error?.code === 'email_not_confirmed') {
+            showToast('이메일 인증이 완료되지 않은 계정입니다.');
+        }
+        else if (error?.code === 'invalid_credentials') {
+            showToast('이메일 또는 비밀번호가 올바르지 않습니다.');
+        }
+        else if (error?.code === 'profile_not_found') {
+            showToast('회원 프로필 연결이 필요합니다.');
+        }
+        else {
+            showToast('로그인 처리 중 오류가 발생했습니다.');
+        }
+
+        return;
+
+    }
+
+
+    currentUser =
+        user;
+
+
+    syncUserUI();
+
+
+    enterWorker();
+
+}
+
+
+/* =========================================
+   노동자 화면 진입
+========================================= */
+
+function enterWorker() {
+
+    const workerApp =
+        document.getElementById(
+            'workerApp'
+        );
+
+
+    const adminApp =
+        document.getElementById(
+            'adminApp'
+        );
+
+
+    if (adminApp) {
+
+        adminApp.classList.add(
+            'hidden'
+        );
+
+    }
+
+
+    if (workerApp) {
+
+        workerApp.classList.remove(
+            'hidden'
+        );
+
+    }
+
+
+    showWorkerScreen(
+        'home'
+    );
+
+}
+
+
+/* =========================================
+   관리자 화면 진입
+========================================= */
+
+function enterAdmin() {
+
+    /*
+       기존 관리자 UI 로직은 admin/index.html로 분리했습니다.
+       로그인한 관리자 정보만 세션에 저장하고 관리자 페이지로 이동합니다.
+    */
+
+    try {
+        sessionStorage.setItem(
+            'shimonCurrentUser',
+            JSON.stringify(currentUser)
+        );
+    }
+    catch (error) {
+        // sessionStorage를 사용할 수 없어도 관리자 페이지 이동은 계속합니다.
+    }
+
+    window.location.href =
+        '../admin/index.html';
+
+}
+
+
+/* =========================================
+   로그아웃
+========================================= */
+
+async function logout() {
+
+    try {
+        sessionStorage.removeItem('shimonCurrentUser');
+    }
+    catch (error) {
+        // 무시
+    }
+
+    if (remoteDatabaseEnabled) {
+
+        try {
+            await remoteDatabase.auth.signOut();
+        }
+        catch (error) {
+            console.error('Supabase 로그아웃 오류', error);
+        }
+
+    }
+
+    stopAllTimers();
+
+    resetWorkSession();
+
+    resetRestSession();
+
+
+    const workerApp =
+        document.getElementById(
+            'workerApp'
+        );
+
+
+    const adminApp =
+        document.getElementById(
+            'adminApp'
+        );
+
+
+    const loginForm =
+        document.getElementById(
+            'loginForm'
+        );
+
+
+    if (adminApp) {
+
+        adminApp.classList.add(
+            'hidden'
+        );
+
+    }
+
+
+    if (workerApp) {
+
+        workerApp.classList.remove(
+            'hidden'
+        );
+
+    }
+
+
+    if (loginForm) {
+
+        loginForm.reset();
+
+    }
+
+
+    currentUser =
+        null;
+
+
+    showWorkerScreen(
+        'welcome'
+    );
+
+
+    showToast(
+        '로그아웃되었습니다.'
+    );
+
+}
+
+
+/* =========================================
+   사용자 정보 표시
+========================================= */
+
+function openDeleteAccountModal() {
+
+    if (!currentUser) {
+        showToast('로그인된 계정이 없습니다.');
+        return;
+    }
+
+    const modal = document.getElementById('deleteAccountModal');
+    const description = document.getElementById('deleteAccountModalDescription');
+
+    if (!modal) {
+        return;
+    }
+
+    deleteAccountTrigger = document.activeElement;
+
+    if (description) {
+        description.textContent =
+            `${currentUser.name}님의 저장된 회원정보가 모두 삭제되며 복구할 수 없습니다.`;
+    }
+
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        document.getElementById('cancelDeleteAccountButton')?.focus();
+    });
+
+}
+
+
+function closeDeleteAccountModal(force = false) {
+
+    if (accountDeletionInProgress && !force) {
+        return;
+    }
+
+    document.getElementById('deleteAccountModal')?.classList.add('hidden');
+    deleteAccountTrigger?.focus?.();
+    deleteAccountTrigger = null;
+
+}
+
+
+function handleDeleteModalBackdrop(event) {
+
+    if (event.target === event.currentTarget) {
+        closeDeleteAccountModal();
+    }
+
+}
+
+
+async function deleteAccount() {
+
+    if (!currentUser || accountDeletionInProgress) {
+        return;
+    }
+
+    const deleteButton = document.getElementById('deleteAccountButton');
+    const confirmButton = document.getElementById('confirmDeleteAccountButton');
+    const cancelButton = document.getElementById('cancelDeleteAccountButton');
+
+    accountDeletionInProgress = true;
+    deleteButton && (deleteButton.disabled = true);
+    confirmButton && (confirmButton.disabled = true);
+    cancelButton && (cancelButton.disabled = true);
+
+    if (confirmButton) {
+        confirmButton.textContent = '처리 중...';
+    }
+
+    try {
+        const { error } = await remoteDatabase.rpc('delete_own_account');
+
+        if (error) {
+            throw error;
+        }
+
+        closeDeleteAccountModal(true);
+        await logout();
+        showToast('계정이 탈퇴 처리되었습니다.');
+    }
+    catch (error) {
+        console.error('계정 탈퇴 오류', error);
+        showToast('계정을 삭제하지 못했습니다. SQL 설정을 확인해주세요.');
+    }
+    finally {
+        accountDeletionInProgress = false;
+        deleteButton && (deleteButton.disabled = false);
+        confirmButton && (confirmButton.disabled = false);
+        cancelButton && (cancelButton.disabled = false);
+
+        if (confirmButton) {
+            confirmButton.textContent = '탈퇴하기';
+        }
+    }
+
+}
+
+
+document.addEventListener('keydown', (event) => {
+    if (
+        event.key === 'Escape' &&
+        !document.getElementById('deleteAccountModal')?.classList.contains('hidden')
+    ) {
+        closeDeleteAccountModal();
+    }
+});
+
+function syncUserUI() {
+
+    const user =
+        currentUser ||
+        demoUsers['김철수'];
+
+
+    setText(
+        'homeUserName',
+        user.name ||
+        '사용자'
+    );
+
+
+    setText(
+        'homeWorkplace',
+        user.workplace ||
+        '-'
+    );
+
+
+    setText(
+        'profileName',
+        user.name ||
+        '-'
+    );
+
+
+    setText(
+        'profileGender',
+        user.gender ||
+        '-'
+    );
+
+
+    setText(
+
+        'profileRole',
+
+        user.role ===
+        'admin'
+
+            ? '관리자'
+
+            : '노동자'
+
+    );
+
+
+    setText(
+        'profileJobType',
+        user.jobType ||
+        '-'
+    );
+
+
+    setText(
+        'profileWorkplace',
+        user.workplace ||
+        '-'
+    );
+
+
+    setText(
+        'profileWorkIntensity',
+        user.workIntensity ||
+        '보통'
+    );
+
+
+    setText(
+        'profileUniform',
+        user.uniform ||
+        '-'
+    );
+
+
+    setText(
+        'profileEmployeeCode',
+        user.employeeCode ||
+        '-'
+    );
+
+
+    setText(
+        'profileCompany',
+        user.company ||
+        '-'
+    );
+
+
+    setText(
+
+        'profileAge',
+
+        user.age
+
+            ? `${user.age}세`
+
+            : '-'
+
+    );
+
+
+    setText(
+        'profilePhone',
+        user.phone ||
+        '-'
+    );
+
+
+    setText(
+        'profileEmail',
+        user.email ||
+        '-'
+    );
+
+
+    setText(
+
+        'profileInitial',
+
+        (
+            user.name ||
+            '사'
+        ).slice(
+            0,
+            1
+        )
+
+    );
+
+}
+
+
+/* =========================================
+   작업 시작
+========================================= */
+
+function startWork() {
+
+    if (
+        workState ===
+        'idle'
+    ) {
+
+        workSeconds =
+            0;
+
+
+        workSessionStartedAt =
+            new Date();
+
+
+        workLimitAlertShown =
+            false;
+
+    }
+
+
+    if (
+        workState !==
+        'running'
+    ) {
+
+        workState =
+            'running';
+
+
+        startWorkInterval();
+
+    }
+
+
+    updateWorkUI();
+
+
+    showWorkerScreen(
+        'work-progress'
+    );
+
+
+    showToast(
+
+        workSeconds ===
+        0
+
+            ? '작업 기록을 시작했습니다.'
+
+            : '작업을 재개했습니다.'
+
+    );
+
+}
+
+
+function startWorkInterval() {
+
+    if (workTimerId) {
+
+        clearInterval(
+            workTimerId
+        );
+
+    }
+
+
+    workTimerId =
+        setInterval(
+
+            () => {
+
+                workSeconds +=
+                    1;
+
+
+                updateWorkUI();
+
+            },
+
+            1000
+
+        );
+
+}
+
+
+function pauseWorkForRest() {
+
+    if (
+        workState !==
+        'running'
+    ) {
+
+        return false;
+
+    }
+
+
+    if (workTimerId) {
+
+        clearInterval(
+            workTimerId
+        );
+
+    }
+
+
+    workTimerId =
+        null;
+
+
+    workState =
+        'paused';
+
+
+    updateHomeWorkStatus();
+
+
+    return true;
+
+}
+
+
+function resumeWorkAfterBreak() {
+
+    if (
+        workState !==
+        'paused'
+    ) {
+
+        return;
+
+    }
+
+
+    workState =
+        'running';
+
+
+    startWorkInterval();
+
+
+    updateWorkUI();
+
+}
+
+
+/* =========================================
+   작업 UI
+========================================= */
+
+function updateWorkUI() {
+
+    setText(
+
+        'workTimer',
+
+        formatDuration(
+            workSeconds
+        )
+
+    );
+
+
+    updateHomeWorkStatus();
+
+
+    const progressPercent =
+        Math.min(
+
+            (
+                workSeconds /
+                WORK_TARGET_SECONDS
+            ) *
+            100,
+
+            100
+
+        );
+
+
+    const workRing =
+        document.getElementById(
+            'workRing'
+        );
+
+
+    if (workRing) {
+
+        workRing.style.setProperty(
+
+            '--progress',
+
+            `${progressPercent}%`
+
+        );
+
+    }
+
+
+    if (
+        workSeconds >=
+        WORK_TARGET_SECONDS &&
+
+        !workLimitAlertShown
+    ) {
+
+        workLimitAlertShown =
+            true;
+
+
+        showToast(
+            `연속 작업 ${formatMinutesForAdmin(adminSettings.maxWorkMinutes)}이 되었습니다. 휴식을 권장합니다.`
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   홈 작업 상태
+========================================= */
+
+function updateHomeWorkStatus() {
+
+    /*
+       홈 추가 카드도
+       작업 타이머와 같이 갱신
+    */
+
+    updateHomeSummary();
+
+
+    const workButton =
+        document.getElementById(
+            'workStartButton'
+        );
+
+
+    if (
+        workState ===
+        'running'
+    ) {
+
+        setText(
+            'workStatusText',
+            '작업 중'
+        );
+
+
+        setText(
+
+            'workElapsedText',
+
+            `연속 작업 ${formatDuration(workSeconds)}`
+
+        );
+
+
+        if (workButton) {
+
+            workButton.textContent =
+                '작업 화면 보기';
+
+        }
+
+
+        return;
+
+    }
+
+
+    if (
+        workState ===
+        'paused'
+    ) {
+
+        setText(
+            'workStatusText',
+            '일시정지'
+        );
+
+
+        setText(
+
+            'workElapsedText',
+
+            `작업 ${formatDuration(workSeconds)} 기록됨`
+
+        );
+
+
+        if (workButton) {
+
+            workButton.textContent =
+                '작업 재개';
+
+        }
+
+
+        return;
+
+    }
+
+
+    setText(
+        'workStatusText',
+        '대기 중'
+    );
+
+
+    setText(
+        'workElapsedText',
+        '작업을 시작해주세요'
+    );
+
+
+    if (workButton) {
+
+        workButton.textContent =
+            '작업 시작';
+
+    }
+
+}
+
+
+/* =========================================
+   작업 종료
+========================================= */
+
+function endWork() {
+
+    if (
+        workState ===
+        'idle' ||
+
+        !workSessionStartedAt
+    ) {
+
+        showWorkerScreen(
+            'home'
+        );
+
+
+        return;
+
+    }
+
+
+    if (workTimerId) {
+
+        clearInterval(
+            workTimerId
+        );
+
+    }
+
+
+    workTimerId =
+        null;
+
+
+    const now =
+        new Date();
+
+
+    const durationMinutes =
+        Math.max(
+
+            1,
+
+            Math.round(
+                workSeconds /
+                60
+            )
+
+        );
+
+
+    workRecords.unshift({
+
+        time:
+            `${formatTime(workSessionStartedAt)} - ${formatTime(now)}`,
+
+        duration:
+            `${durationMinutes}분`,
+
+        temp:
+            33,
+
+        coreTemp:
+            estimatedCoreTemp
+
+    });
+
+
+    resetWorkSession();
+
+
+    renderRecords();
+
+
+    showWorkerScreen(
+        'home'
+    );
+
+
+    showToast(
+        '작업 기록이 저장되었습니다.'
+    );
+
+}
+
+
+/* =========================================
+   작업 초기화
+========================================= */
+
+function resetWorkSession() {
+
+    if (workTimerId) {
+
+        clearInterval(
+            workTimerId
+        );
+
+    }
+
+
+    workTimerId =
+        null;
+
+
+    workSeconds =
+        0;
+
+
+    workSessionStartedAt =
+        null;
+
+
+    workState =
+        'idle';
+
+
+    workLimitAlertShown =
+        false;
+
+
+    resumeWorkAfterRest =
+        false;
+
+
+    const workRing =
+        document.getElementById(
+            'workRing'
+        );
+
+
+    if (workRing) {
+
+        workRing.style.setProperty(
+
+            '--progress',
+
+            '0%'
+
+        );
+
+    }
+
+
+    setText(
+        'workTimer',
+        '00:00:00'
+    );
+
+
+    updateHomeWorkStatus();
+
+}
+
+
+/* =========================================
+   휴식 시작
+========================================= */
+
+function startRest() {
+
+    resumeWorkAfterRest =
+        pauseWorkForRest();
+
+
+    if (restTimerId) {
+
+        clearInterval(
+            restTimerId
+        );
+
+    }
+
+
+    restSeconds =
+        REST_TARGET_SECONDS;
+
+
+    restStartedAt =
+        new Date();
+
+
+    updateRestTimer();
+
+
+    restTimerId =
+        setInterval(
+
+            () => {
+
+                restSeconds =
+                    Math.max(
+
+                        0,
+
+                        restSeconds -
+                        1
+
+                    );
+
+
+                updateRestTimer();
+
+
+                if (
+                    restSeconds <=
+                    0
+                ) {
+
+                    clearInterval(
+                        restTimerId
+                    );
+
+
+                    restTimerId =
+                        null;
+
+
+                    showToast(
+                        '권장 휴식 시간이 완료되었습니다.'
+                    );
+
+                }
+
+            },
+
+            1000
+
+        );
+
+
+    showWorkerScreen(
+        'rest-progress'
+    );
+
+}
+
+
+/* =========================================
+   휴식 타이머
+========================================= */
+
+function updateRestTimer() {
+
+    const minutes =
+        String(
+
+            Math.floor(
+                restSeconds /
+                60
+            )
+
+        ).padStart(
+            2,
+            '0'
+        );
+
+
+    const seconds =
+        String(
+
+            restSeconds %
+            60
+
+        ).padStart(
+            2,
+            '0'
+        );
+
+
+    setText(
+
+        'restTimer',
+
+        `${minutes}:${seconds}`
+
+    );
+
+
+    const progressPercent =
+        Math.max(
+
+            0,
+
+            Math.min(
+
+                (
+                    restSeconds /
+                    REST_TARGET_SECONDS
+                ) *
+                100,
+
+                100
+
+            )
+
+        );
+
+
+    const restRing =
+        document.getElementById(
+            'restRing'
+        );
+
+
+    if (restRing) {
+
+        restRing.style.setProperty(
+
+            '--progress',
+
+            `${progressPercent}%`
+
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   휴식 종료
+========================================= */
+
+function endRest() {
+
+    if (restTimerId) {
+
+        clearInterval(
+            restTimerId
+        );
+
+    }
+
+
+    restTimerId =
+        null;
+
+
+    const now =
+        new Date();
+
+
+    const elapsedSeconds =
+        REST_TARGET_SECONDS -
+        restSeconds;
+
+
+    const actualSeconds =
+
+        elapsedSeconds >
+        0
+
+            ? elapsedSeconds
+
+            : REST_TARGET_SECONDS;
+
+
+    const start =
+
+        restStartedAt ||
+
+        new Date(
+
+            now.getTime() -
+
+            actualSeconds *
+            1000
+
+        );
+
+
+    const durationMinutes =
+        Math.max(
+
+            1,
+
+            Math.round(
+
+                actualSeconds /
+                60
+
+            )
+
+        );
+
+
+    restRecords.unshift({
+
+        time:
+            `${formatTime(start)} - ${formatTime(now)}`,
+
+        duration:
+            `${durationMinutes}분`,
+
+        temp:
+            34,
+
+        coreTemp:
+            estimatedCoreTemp
+
+    });
+
+
+    const shouldResumeWork =
+        resumeWorkAfterRest;
+
+
+    resetRestSession();
+
+
+    renderRecords();
+
+
+    if (
+        shouldResumeWork &&
+
+        workState ===
+        'paused'
+    ) {
+
+        resumeWorkAfterBreak();
+
+
+        showWorkerScreen(
+            'work-progress'
+        );
+
+
+        showToast(
+            '휴식이 저장되고 작업이 재개되었습니다.'
+        );
+
+    }
+
+    else {
+
+        showWorkerScreen(
+            'home'
+        );
+
+
+        showToast(
+            '휴식 기록이 저장되었습니다.'
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   휴식 초기화
+========================================= */
+
+function resetRestSession() {
+
+    if (restTimerId) {
+
+        clearInterval(
+            restTimerId
+        );
+
+    }
+
+
+    restTimerId =
+        null;
+
+
+    restSeconds =
+        REST_TARGET_SECONDS;
+
+
+    restStartedAt =
+        null;
+
+
+    resumeWorkAfterRest =
+        false;
+
+
+    setText(
+        'restTimer',
+        formatTargetClock(
+            REST_TARGET_SECONDS
+        )
+    );
+
+    setText(
+        'restTargetText',
+        `/ ${formatTargetClock(REST_TARGET_SECONDS)}`
+    );
+
+
+    const restRing =
+        document.getElementById(
+            'restRing'
+        );
+
+
+    if (restRing) {
+
+        restRing.style.setProperty(
+
+            '--progress',
+
+            '100%'
+
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   알림
+========================================= */
+
+function openNotifications() {
+
+    showWorkerScreen(
+        'notifications'
+    );
+
+}
+
+
+function snoozeRestAlert() {
+
+    showWorkerScreen(
+        'home'
+    );
+
+
+    showToast(
+        '5분 후 다시 휴식 알림을 표시합니다.'
+    );
+
+
+    setTimeout(
+
+        () => {
+
+            if (
+                currentUser &&
+
+                currentUser.role ===
+                'worker' &&
+
+                notificationEnabled
+            ) {
+
+                showToast(
+                    '휴식 권장 알림이 도착했습니다.'
+                );
+
+            }
+
+        },
+
+        5000
+
+    );
+
+}
+
+
+function toggleNotifications() {
+
+    notificationEnabled =
+        !notificationEnabled;
+
+
+    setText(
+
+        'notificationSetting',
+
+        notificationEnabled
+
+            ? '켜짐 ›'
+
+            : '꺼짐 ›'
+
+    );
+
+
+    showToast(
+
+        notificationEnabled
+
+            ? '알림을 켰습니다.'
+
+            : '알림을 껐습니다.'
+
+    );
+
+}
+
+
+/* =========================================
+   기록 관련 공통 함수
+========================================= */
+
+function getRecordTotalMinutes(
+    records
+) {
+
+    return records.reduce(
+
+        (
+            sum,
+            item
+        ) => {
+
+            return (
+
+                sum +
+
+                (
+                    parseInt(
+                        item.duration,
+                        10
+                    ) ||
+                    0
+                )
+
+            );
+
+        },
+
+        0
+
+    );
+
+}
+
+
+/* =========================================
+   분 → 시간/분 변환
+========================================= */
+
+function formatMinutesForUI(
+    totalMinutes
+) {
+
+    const hours =
+        Math.floor(
+            totalMinutes /
+            60
+        );
+
+
+    const minutes =
+        totalMinutes %
+        60;
+
+
+    if (
+        hours <=
+        0
+    ) {
+
+        return `${minutes}분`;
+
+    }
+
+
+    if (
+        minutes ===
+        0
+    ) {
+
+        return `${hours}시간`;
+
+    }
+
+
+    return (
+        `${hours}시간 ${minutes}분`
+    );
+
+}
+
+
+/* =========================================
+   홈 - 오늘 기록 / 안전 상태
+========================================= */
+
+function updateHomeSummary() {
+
+    /*
+       기존 작업 기록의 총 시간
+    */
+
+    const savedWorkMinutes =
+        getRecordTotalMinutes(
+            workRecords
+        );
+
+
+    /*
+       현재 진행 중인 작업시간
+    */
+
+    const currentWorkMinutes =
+        Math.floor(
+            workSeconds /
+            60
+        );
+
+
+    const totalWorkMinutes =
+        savedWorkMinutes +
+        currentWorkMinutes;
+
+
+    const totalRestMinutes =
+        getRecordTotalMinutes(
+            restRecords
+        );
+
+
+    /*
+       홈 - 오늘 작업
+    */
+
+    setText(
+
+        'homeWorkToday',
+
+        totalWorkMinutes >=
+        60
+
+            ? formatMinutesForUI(
+                totalWorkMinutes
+            )
+
+            : `${totalWorkMinutes}분`
+
+    );
+
+
+    /*
+       홈 - 오늘 휴식
+    */
+
+    setText(
+
+        'homeRestToday',
+
+        totalRestMinutes >=
+        60
+
+            ? formatMinutesForUI(
+                totalRestMinutes
+            )
+
+            : `${totalRestMinutes}분`
+
+    );
+
+
+    /*
+       프로토타입 안전 알림 횟수
+    */
+
+    setText(
+        'homeAlertToday',
+        '2회'
+    );
+
+
+    /*
+       현재 작업 중
+    */
+
+    if (
+        workState ===
+        'running'
+    ) {
+
+        setText(
+            'homeSafetyTitle',
+            '주의 단계'
+        );
+
+
+        setText(
+            'homeSafetyBadge',
+            '모니터링 중'
+        );
+
+
+        const elapsed =
+            formatDuration(
+                workSeconds
+            );
+
+
+        setText(
+
+            'homeSafetyDescription',
+
+            `현재 ${elapsed} 동안 작업 중입니다. 체감온도가 높으므로 충분한 수분을 섭취하고 권장 휴식 시간을 확인해주세요.`
+
+        );
+
+
+        return;
+
+    }
+
+
+    /*
+       작업 일시정지
+    */
+
+    if (
+        workState ===
+        'paused'
+    ) {
+
+        setText(
+            'homeSafetyTitle',
+            '휴식 진행 권장'
+        );
+
+
+        setText(
+            'homeSafetyBadge',
+            '휴식 필요'
+        );
+
+
+        setText(
+
+            'homeSafetyDescription',
+
+            '작업이 일시정지되어 있습니다. 충분히 휴식하고 몸 상태를 확인한 뒤 작업을 재개해주세요.'
+
+        );
+
+
+        return;
+
+    }
+
+
+    /*
+       작업 시작 전
+    */
+
+    setText(
+        'homeSafetyTitle',
+        '안전 상태 확인'
+    );
+
+
+    setText(
+        'homeSafetyBadge',
+        '작업 대기'
+    );
+
+
+    setText(
+
+        'homeSafetyDescription',
+
+        '작업을 시작하기 전 현재 체감온도와 몸 상태를 확인해주세요. 작업 중에는 정기적인 수분 섭취를 권장합니다.'
+
+    );
+
+}
+
+
+/* =========================================
+   기록 탭 변경
+========================================= */
+
+function setRecordTab(tab) {
+
+    recordTab =
+        tab;
+
+
+    const workTab =
+        document.getElementById(
+            'workTab'
+        );
+
+
+    const restTab =
+        document.getElementById(
+            'restTab'
+        );
+
+
+    if (workTab) {
+
+        workTab.classList.toggle(
+
+            'active',
+
+            tab ===
+            'work'
+
+        );
+
+    }
+
+
+    if (restTab) {
+
+        restTab.classList.toggle(
+
+            'active',
+
+            tab ===
+            'rest'
+
+        );
+
+    }
+
+
+    renderRecords();
+
+}
+
+
+
+/* =========================================
+   기록 위험도 / 하루 패턴
+========================================= */
+
+function getRecordRisk(
+    apparentTemp,
+    coreTemp
+) {
+    const temp =
+        Number(apparentTemp);
+
+    const core =
+        Number(coreTemp);
+
+    if (
+        core >= 38.0 ||
+        temp >= 35
+    ) {
+        return {
+            level: 'warning',
+            label: '경고'
+        };
+    }
+
+    if (
+        core >= 37.5 ||
+        temp >= 33
+    ) {
+        return {
+            level: 'caution',
+            label: '주의'
+        };
+    }
+
+    return {
+        level: 'normal',
+        label: '정상'
+    };
+}
+
+
+function parseRecordClock(value) {
+    const match =
+        String(value || '')
+            .match(/(\d{1,2}):(\d{2})/);
+
+    if (!match) {
+        return null;
+    }
+
+    return (
+        Number(match[1]) * 60 +
+        Number(match[2])
+    );
+}
+
+
+function getRecordRange(record) {
+    const parts =
+        String(record.time || '')
+            .split('-')
+            .map(
+                value =>
+                    value.trim()
+            );
+
+    const start =
+        parseRecordClock(
+            parts[0]
+        );
+
+    const end =
+        parseRecordClock(
+            parts[1]
+        );
+
+    if (
+        start === null ||
+        end === null
+    ) {
+        return null;
+    }
+
+    return {
+        start,
+        end
+    };
+}
+
+
+function minutesToClock(totalMinutes) {
+    const safe =
+        Math.max(
+            0,
+            Math.round(totalMinutes)
+        );
+
+    const hours =
+        String(
+            Math.floor(
+                safe / 60
+            )
+        ).padStart(2, '0');
+
+    const minutes =
+        String(
+            safe % 60
+        ).padStart(2, '0');
+
+    return `${hours}:${minutes}`;
+}
+
+
+function renderRecordTimeline() {
+    const timeline =
+        document.getElementById(
+            'recordTimeline'
+        );
+
+    if (!timeline) {
+        return;
+    }
+
+    const sessions = [
+        ...workRecords.map(
+            record => ({
+                ...record,
+                type: 'work'
+            })
+        ),
+        ...restRecords.map(
+            record => ({
+                ...record,
+                type: 'rest'
+            })
+        )
+    ]
+        .map(
+            record => ({
+                ...record,
+                range:
+                    getRecordRange(
+                        record
+                    )
+            })
+        )
+        .filter(
+            record =>
+                record.range
+        )
+        .sort(
+            (a, b) =>
+                a.range.start -
+                b.range.start
+        );
+
+    if (!sessions.length) {
+        timeline.innerHTML = `
+            <div class="record-timeline-empty">
+                아직 오늘 기록이 없습니다.
+            </div>
+        `;
+        return;
+    }
+
+    const startMinute =
+        Math.min(
+            ...sessions.map(
+                item =>
+                    item.range.start
+            )
+        );
+
+    const endMinute =
+        Math.max(
+            ...sessions.map(
+                item =>
+                    item.range.end
+            )
+        );
+
+    const span =
+        Math.max(
+            endMinute -
+            startMinute,
+            1
+        );
+
+    const segments =
+        sessions
+            .map(
+                session => {
+                    const left =
+                        (
+                            (
+                                session.range.start -
+                                startMinute
+                            ) /
+                            span
+                        ) *
+                        100;
+
+                    const width =
+                        Math.max(
+                            (
+                                (
+                                    session.range.end -
+                                    session.range.start
+                                ) /
+                                span
+                            ) *
+                            100,
+                            2.5
+                        );
+
+                    const risk =
+                        getRecordRisk(
+                            session.temp,
+                            session.coreTemp
+                        );
+
+                    return `
+                        <span
+                            class="record-timeline-segment ${session.type} risk-${risk.level}"
+                            style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%"
+                            title="${session.time} · ${session.type === 'work' ? '작업' : '휴식'} · ${risk.label}"
+                        ></span>
+                    `;
+                }
+            )
+            .join('');
+
+    timeline.innerHTML = `
+        <div class="record-timeline-rail">
+            <svg class="record-timeline-ekg" viewBox="0 0 320 36" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M0 19H54l9-9 10 19 12-25 13 21 10-12 12 6h200"></path>
+            </svg>
+
+            ${segments}
+        </div>
+
+        <div class="record-timeline-axis">
+            <span>${minutesToClock(startMinute)}</span>
+            <span>${minutesToClock(endMinute)}</span>
+        </div>
+    `;
+}
+
+
+/* =========================================
+   기록 화면 렌더링
+========================================= */
+
+function renderRecords() {
+
+    const list =
+
+        recordTab ===
+        'work'
+
+            ? workRecords
+
+            : restRecords;
+
+
+    const typeLabel =
+
+        recordTab ===
+        'work'
+
+            ? '작업'
+
+            : '휴식';
+
+
+    /*
+       선택된 탭의 총 시간
+    */
+
+    const totalMinutes =
+        getRecordTotalMinutes(
+            list
+        );
+
+
+    /*
+       전체 작업/휴식 요약
+    */
+
+    const totalWorkMinutes =
+        getRecordTotalMinutes(
+            workRecords
+        );
+
+
+    const totalRestMinutes =
+        getRecordTotalMinutes(
+            restRecords
+        );
+
+
+    /*
+       작업 기록 체감온도
+    */
+
+    const temperatures =
+        workRecords
+
+            .map(
+
+                record =>
+                    Number(
+                        record.temp
+                    )
+
+            )
+
+            .filter(
+
+                temp =>
+                    Number.isFinite(
+                        temp
+                    )
+
+            );
+
+
+    const averageTemperature =
+
+        temperatures.length
+
+            ? (
+
+                temperatures.reduce(
+
+                    (
+                        sum,
+                        temp
+                    ) =>
+                        sum +
+                        temp,
+
+                    0
+
+                ) /
+
+                temperatures.length
+
+            )
+
+            : 0;
+
+
+    const maxTemperature =
+
+        temperatures.length
+
+            ? Math.max(
+                ...temperatures
+            )
+
+            : 0;
+
+
+    const coreTemperatures =
+        workRecords
+            .map(
+                record =>
+                    Number(
+                        record.coreTemp
+                    )
+            )
+            .filter(
+                value =>
+                    Number.isFinite(
+                        value
+                    )
+            );
+
+
+    const maxCoreTemperature =
+        coreTemperatures.length
+            ? Math.max(
+                ...coreTemperatures
+            )
+            : 0;
+const recordList =
+        document.getElementById(
+            'recordList'
+        );
+
+
+    /*
+       홈 HTML만 있고
+       기록 HTML이 없는 상황에서도
+       홈 요약은 업데이트
+    */
+
+    if (
+        !recordList
+    ) {
+
+        updateHomeSummary();
+
+        return;
+
+    }
+/*
+       오늘의 안전 요약
+    */
+
+    setText(
+
+        'recordWorkCount',
+
+        `${workRecords.length}회`
+
+    );
+
+
+    setText(
+
+        'recordTotalWork',
+
+        formatMinutesForUI(
+            totalWorkMinutes
+        )
+
+    );
+
+
+    setText(
+
+        'recordTotalRest',
+
+        formatMinutesForUI(
+            totalRestMinutes
+        )
+
+    );
+
+
+    setText(
+
+        'recordAverageTemp',
+
+        averageTemperature
+
+            ? `${averageTemperature
+                .toFixed(1)
+                .replace(
+                    '.0',
+                    ''
+                )}℃`
+
+            : '-'
+
+    );
+
+
+    setText(
+        'recordMaxCoreTemp',
+        maxCoreTemperature
+            ? `${maxCoreTemperature.toFixed(1)}℃`
+            : '-'
+    );
+
+
+    const recordSafetyBadge =
+        document.getElementById(
+            'recordSafetyBadge'
+        );
+
+    const highestRisk =
+        workRecords.reduce(
+            (current, record) => {
+                const next =
+                    getRecordRisk(
+                        record.temp,
+                        record.coreTemp
+                    );
+
+                const rank = {
+                    normal: 0,
+                    caution: 1,
+                    warning: 2
+                };
+
+                return (
+                    rank[next.level] >
+                    rank[current.level]
+                )
+                    ? next
+                    : current;
+            },
+            {
+                level: 'normal',
+                label: '정상'
+            }
+        );
+
+    if (recordSafetyBadge) {
+        recordSafetyBadge.textContent =
+            highestRisk.label;
+
+        recordSafetyBadge.dataset.level =
+            highestRisk.level;
+    }
+
+
+
+    /*
+       기록 목록 제목
+    */
+
+    setText(
+
+        'recordListTitle',
+
+        `${typeLabel} 기록`
+
+    );
+
+
+    setText(
+
+        'recordListCount',
+
+        `${list.length}건`
+
+    );
+
+
+    /*
+       기록 카드
+    */
+
+    recordList.innerHTML =
+
+        list
+            .map(
+
+                record => {
+
+                    const temperature =
+                        Number(
+                            record.temp
+                        );
+
+                    const coreTemperature =
+                        Number.isFinite(
+                            Number(
+                                record.coreTemp
+                            )
+                        )
+                            ? Number(
+                                record.coreTemp
+                            )
+                            : estimatedCoreTemp;
+
+                    const risk =
+                        getRecordRisk(
+                            temperature,
+                            coreTemperature
+                        );
+
+                    let note =
+                        '안전하게 기록이 완료되었습니다.';
+
+
+                    if (
+                        recordTab ===
+                        'work'
+                    ) {
+
+                        if (
+                            risk.level ===
+                            'warning'
+                        ) {
+
+                            note =
+                                '열스트레스 위험이 높았던 구간입니다. 충분한 휴식과 상태 확인이 필요합니다.';
+
+                        }
+
+                        else if (
+                            risk.level ===
+                            'caution'
+                        ) {
+
+                            note =
+                                '체감온도 또는 추정 심부체온이 주의 구간에 가까웠습니다.';
+
+                        }
+
+                        else {
+
+                            note =
+                                '안전한 범위에서 작업을 완료했어요.';
+
+                        }
+
+                    }
+
+                    else {
+
+                        note =
+                            risk.level ===
+                            'warning'
+
+                                ? '휴식 중에도 추정 심부체온이 높게 유지된 구간입니다.'
+
+                                : '휴식 기록이 정상적으로 저장되었습니다.';
+
+                    }
+
+
+                    return `
+
+                        <article class="card record-item risk-${risk.level}">
+
+                            <div class="record-item-top">
+
+                                <div class="record-item-title">
+
+                                    <span class="record-risk-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M3 12h4l1.7-3.5 3.1 7.3 2.2-5 1.3 2.6H21"></path>
+                                        </svg>
+                                    </span>
+
+                                    <div>
+                                        <strong>
+                                            ${record.time}
+                                        </strong>
+
+                                        <small>
+                                            ${typeLabel} 기록
+                                        </small>
+                                    </div>
+
+                                </div>
+
+                                <span class="record-risk-badge">
+                                    ${risk.label}
+                                </span>
+
+                            </div>
+
+
+                            <div class="record-item-body">
+
+                                <div class="record-duration-block">
+
+                                    <span>
+                                        ${typeLabel}시간
+                                    </span>
+
+                                    <strong>
+                                        ${record.duration}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="record-metric-stack">
+
+                                    <div class="record-metric-chip apparent">
+                                        <span>체감온도</span>
+                                        <strong>${record.temp}℃</strong>
+                                    </div>
+
+                                    <div class="record-metric-chip core risk-${risk.level}">
+                                        <span>
+                                            <b>AI 추정</b>
+                                            심부체온
+                                        </span>
+                                        <strong>${coreTemperature.toFixed(1)}℃</strong>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <p class="record-item-note">
+                                ${note}
+                            </p>
+
+                        </article>
+
+                    `;
+
+                }
+
+            )
+            .join('');
+
+
+    /*
+       홈 화면 요약 동기화
+    */
+
+    updateHomeSummary();
+
+}
+
+
+/* =========================================
+   마이페이지 정보 수정 열기
+========================================= */
+
+function openProfileEdit() {
+
+    const jobType =
+        document.getElementById(
+            'editJobType'
+        );
+
+
+    const workplace =
+        document.getElementById(
+            'editWorkplace'
+        );
+
+
+    const workIntensity =
+        document.getElementById(
+            'editWorkIntensity'
+        );
+
+
+    const uniform =
+        document.getElementById(
+            'editUniform'
+        );
+
+
+    const gender =
+        document.getElementById(
+            'editGender'
+        );
+
+
+    const phone =
+        document.getElementById(
+            'editPhone'
+        );
+
+
+    const email =
+        document.getElementById(
+            'editEmail'
+        );
+
+
+    if (jobType) {
+
+        jobType.value =
+            currentUser?.jobType ||
+            '';
+
+    }
+
+
+    if (workplace) {
+
+        workplace.value =
+            currentUser?.workplace ||
+            '';
+
+    }
+
+
+    if (workIntensity) {
+
+        workIntensity.value =
+            currentUser?.workIntensity ||
+            '보통';
+
+    }
+
+
+    if (uniform) {
+
+        uniform.value =
+            currentUser?.uniform ||
+            '착용';
+
+    }
+
+
+    if (gender) {
+
+        gender.value =
+            currentUser?.gender ||
+            '남성';
+
+    }
+
+
+    if (phone) {
+
+        phone.value =
+            currentUser?.phone ||
+            '';
+
+    }
+
+
+    if (email) {
+
+        email.value =
+            currentUser?.email ||
+            '';
+
+    }
+
+
+    showWorkerScreen(
+        'settings'
+    );
+
+
+    const settingsScreen =
+        document.getElementById(
+            'screen-settings'
+        );
+
+
+    if (settingsScreen) {
+
+        settingsScreen.scrollTop =
+            0;
+
+    }
+
+}
+
+
+/* =========================================
+   마이페이지 수정 닫기
+========================================= */
+
+function closeProfileEdit() {
+
+    showWorkerScreen(
+        'mypage'
+    );
+
+}
+
+
+/* =========================================
+   마이페이지 수정 저장
+========================================= */
+
+function saveProfileEdit() {
+
+    const jobType =
+        document
+            .getElementById(
+                'editJobType'
+            )
+            ?.value
+            .trim() ||
+        '';
+
+
+    const workplace =
+        document
+            .getElementById(
+                'editWorkplace'
+            )
+            ?.value
+            .trim() ||
+        '';
+
+
+    const workIntensity =
+        document
+            .getElementById(
+                'editWorkIntensity'
+            )
+            ?.value ||
+        '보통';
+
+
+    const uniform =
+        document
+            .getElementById(
+                'editUniform'
+            )
+            ?.value ||
+        '착용';
+
+
+    const gender =
+        document
+            .getElementById(
+                'editGender'
+            )
+            ?.value ||
+        '';
+
+
+    const phone =
+        document
+            .getElementById(
+                'editPhone'
+            )
+            ?.value
+            .trim() ||
+        '';
+
+
+    const email =
+        document
+            .getElementById(
+                'editEmail'
+            )
+            ?.value
+            .trim() ||
+        '';
+
+
+    if (!jobType) {
+
+        showToast(
+            '작업 유형을 입력해주세요.'
+        );
+
+
+        return;
+
+    }
+
+
+    if (!workplace) {
+
+        showToast(
+            '작업 장소를 입력해주세요.'
+        );
+
+
+        return;
+
+    }
+
+
+    currentUser.jobType =
+        jobType;
+
+
+    currentUser.workplace =
+        workplace;
+
+
+    currentUser.workIntensity =
+        workIntensity;
+
+
+    currentUser.uniform =
+        uniform;
+
+
+    currentUser.gender =
+        gender;
+
+
+    currentUser.phone =
+        phone;
+
+
+    currentUser.email =
+        email;
+
+
+    localStorage.setItem(
+
+        'shimonUser',
+
+        JSON.stringify(
+            currentUser
+        )
+
+    );
+
+
+    syncUserUI();
+
+
+    closeProfileEdit();
+
+
+    showToast(
+        '작업 정보가 변경되었습니다.'
+    );
+
+}
+
+
+/* =========================================
+   모든 타이머 정지
+========================================= */
+
+function stopAllTimers() {
+
+    if (workTimerId) {
+
+        clearInterval(
+            workTimerId
+        );
+
+    }
+
+
+    if (restTimerId) {
+
+        clearInterval(
+            restTimerId
+        );
+
+    }
+
+
+    workTimerId =
+        null;
+
+
+    restTimerId =
+        null;
+
+}
+
+
+
+/* =========================================
+   관리자 안전 설정
+   - 현재 프로토타입: localStorage 저장
+   - 실제 서비스: company_settings API/DB로 교체
+========================================= */
+
+const DEFAULT_ADMIN_SETTINGS = {
+    dangerTemperature: 43,
+    cautionTemperature: 38,
+    maxWorkMinutes: 120,
+    restMinutes: 20,
+    channels: {
+        push: true,
+        sms: true,
+        email: false,
+        emergencyCall: true
+    }
+};
+
+let adminSettings =
+    JSON.parse(
+        JSON.stringify(
+            DEFAULT_ADMIN_SETTINGS
+        )
+    );
+
+
+function formatMinutesForAdmin(minutes) {
+
+    const value =
+        Number(minutes) ||
+        0;
+
+    if (
+        value > 0 &&
+        value % 60 ===
+        0
+    ) {
+
+        return `${value / 60}시간`;
+
+    }
+
+    return `${value}분`;
+
+}
+
+
+function formatTargetClock(totalSeconds) {
+
+    const minutes =
+        Math.floor(
+            totalSeconds /
+            60
+        );
+
+    const seconds =
+        totalSeconds %
+        60;
+
+    return (
+        `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    );
+
+}
+
+
+function applyAdminSettingsToUI() {
+
+    const danger =
+        Number(
+            adminSettings.dangerTemperature
+        );
+
+    const caution =
+        Number(
+            adminSettings.cautionTemperature
+        );
+
+    const maxWorkMinutes =
+        Number(
+            adminSettings.maxWorkMinutes
+        );
+
+    const restMinutes =
+        Number(
+            adminSettings.restMinutes
+        );
+
+
+    WORK_TARGET_SECONDS =
+        maxWorkMinutes *
+        60;
+
+    REST_TARGET_SECONDS =
+        restMinutes *
+        60;
+
+
+    const inputValues = {
+        adminDangerTemperature: danger,
+        adminCautionTemperature: caution,
+        adminMaxWorkMinutes: maxWorkMinutes,
+        adminRestMinutes: restMinutes
+    };
+
+
+    Object.entries(
+        inputValues
+    ).forEach(
+        ([id, value]) => {
+
+            const input =
+                document.getElementById(
+                    id
+                );
+
+            if (input) {
+
+                input.value =
+                    value;
+
+            }
+
+        }
+    );
+
+
+    setText(
+        'adminDangerMetricLabel',
+        `위험 (${danger}°C+)`
+    );
+
+    setText(
+        'adminCautionMetricLabel',
+        `주의 (${caution}~${danger}°C)`
+    );
+
+    setText(
+        'adminNormalMetricLabel',
+        `정상 (${caution}°C 미만)`
+    );
+
+    setText(
+        'workTargetText',
+        `${formatMinutesForAdmin(maxWorkMinutes)} 기준`
+    );
+
+    setText(
+        'restTargetText',
+        `/ ${formatTargetClock(REST_TARGET_SECONDS)}`
+    );
+
+
+    document
+        .querySelectorAll(
+            '.admin-toggle[data-setting]'
+        )
+        .forEach(
+            (button) => {
+
+                const key =
+                    button.dataset.setting;
+
+                const isOn =
+                    Boolean(
+                        adminSettings.channels[
+                            key
+                        ]
+                    );
+
+                button.classList.toggle(
+                    'on',
+                    isOn
+                );
+
+                button.setAttribute(
+                    'aria-pressed',
+                    String(
+                        isOn
+                    )
+                );
+
+            }
+        );
+
+}
+
+
+function persistAdminSettings() {
+
+    localStorage.setItem(
+        'shimonAdminSettings',
+        JSON.stringify(
+            adminSettings
+        )
+    );
+
+}
+
+
+function loadAdminSettings() {
+
+    try {
+
+        const saved =
+            localStorage.getItem(
+                'shimonAdminSettings'
+            );
+
+        if (saved) {
+
+            const parsed =
+                JSON.parse(
+                    saved
+                );
+
+            adminSettings = {
+                ...DEFAULT_ADMIN_SETTINGS,
+                ...parsed,
+                channels: {
+                    ...DEFAULT_ADMIN_SETTINGS.channels,
+                    ...(
+                        parsed.channels ||
+                        {}
+                    )
+                }
+            };
+
+        }
+
+    }
+
+    catch (error) {
+
+        adminSettings =
+            JSON.parse(
+                JSON.stringify(
+                    DEFAULT_ADMIN_SETTINGS
+                )
+            );
+
+    }
+
+
+    applyAdminSettingsToUI();
+
+}
+
+
+function saveAdminThresholdSettings() {
+
+    const danger =
+        Number(
+            document
+                .getElementById(
+                    'adminDangerTemperature'
+                )
+                ?.value
+        );
+
+    const caution =
+        Number(
+            document
+                .getElementById(
+                    'adminCautionTemperature'
+                )
+                ?.value
+        );
+
+    const maxWorkMinutes =
+        Number(
+            document
+                .getElementById(
+                    'adminMaxWorkMinutes'
+                )
+                ?.value
+        );
+
+    const restMinutes =
+        Number(
+            document
+                .getElementById(
+                    'adminRestMinutes'
+                )
+                ?.value
+        );
+
+
+    if (
+        !danger ||
+        !caution ||
+        !maxWorkMinutes ||
+        !restMinutes
+    ) {
+
+        showToast(
+            '모든 임계값을 입력해주세요.'
+        );
+
+        return;
+
+    }
+
+
+    if (
+        danger <=
+        caution
+    ) {
+
+        showToast(
+            '위험 체감온도는 주의 체감온도보다 높아야 합니다.'
+        );
+
+        return;
+
+    }
+
+
+    if (
+        danger >
+        60 ||
+        caution >
+        60
+    ) {
+
+        showToast(
+            '체감온도 임계값을 확인해주세요.'
+        );
+
+        return;
+
+    }
+
+
+    if (
+        maxWorkMinutes <
+        10 ||
+        maxWorkMinutes >
+        480
+    ) {
+
+        showToast(
+            '최대 작업 시간은 10~480분으로 설정해주세요.'
+        );
+
+        return;
+
+    }
+
+
+    if (
+        restMinutes <
+        1 ||
+        restMinutes >
+        120
+    ) {
+
+        showToast(
+            '권장 휴식 시간은 1~120분으로 설정해주세요.'
+        );
+
+        return;
+
+    }
+
+
+    adminSettings = {
+        ...adminSettings,
+        dangerTemperature: danger,
+        cautionTemperature: caution,
+        maxWorkMinutes,
+        restMinutes
+    };
+
+
+    persistAdminSettings();
+
+    applyAdminSettingsToUI();
+
+
+    if (
+        workState ===
+        'idle'
+    ) {
+
+        resetWorkSession();
+
+    }
+
+
+    if (
+        !restTimerId
+    ) {
+
+        resetRestSession();
+
+    }
+
+
+    showToast(
+        '알림 임계값을 저장했습니다.'
+    );
+
+}
+
+
+function resetAdminThresholdSettings() {
+
+    adminSettings = {
+        ...adminSettings,
+        dangerTemperature:
+            DEFAULT_ADMIN_SETTINGS.dangerTemperature,
+        cautionTemperature:
+            DEFAULT_ADMIN_SETTINGS.cautionTemperature,
+        maxWorkMinutes:
+            DEFAULT_ADMIN_SETTINGS.maxWorkMinutes,
+        restMinutes:
+            DEFAULT_ADMIN_SETTINGS.restMinutes
+    };
+
+
+    persistAdminSettings();
+
+    applyAdminSettingsToUI();
+
+
+    if (
+        workState ===
+        'idle'
+    ) {
+
+        resetWorkSession();
+
+    }
+
+
+    if (
+        !restTimerId
+    ) {
+
+        resetRestSession();
+
+    }
+
+
+    showToast(
+        '알림 임계값을 기본값으로 복원했습니다.'
+    );
+
+}
+
+
+/* =========================================
+   관리자
+========================================= */
+
+let currentAdminPage =
+    'dashboard';
+
+
+let currentAdminWorkerFilter =
+    'all';
+
+
+const adminPageTitles = {
+
+    dashboard:
+        '대시보드',
+
+    workers:
+        '작업자 현황',
+
+    alerts:
+        '위험 알림',
+
+    'admin-settings':
+        '설정'
+
+};
+
+
+/* =========================================
+   관리자 페이지 전환
+========================================= */
+
+function showAdminPage(
+    pageName
+) {
+
+    currentAdminPage =
+        pageName;
+
+
+    document
+        .querySelectorAll(
+            '[data-admin-page]'
+        )
+        .forEach(
+
+            (page) => {
+
+                page.classList.toggle(
+
+                    'active',
+
+                    page.dataset.adminPage ===
+                    pageName
+
+                );
+
+            }
+
+        );
+
+
+    document
+        .querySelectorAll(
+            '[data-admin-target]'
+        )
+        .forEach(
+
+            (button) => {
+
+                button.classList.toggle(
+
+                    'active',
+
+                    button.dataset.adminTarget ===
+                    pageName
+
+                );
+
+            }
+
+        );
+
+
+    setText(
+
+        'adminPageTitle',
+
+        adminPageTitles[
+            pageName
+        ] ||
+        '대시보드'
+
+    );
+
+
+    window.scrollTo(
+        0,
+        0
+    );
+
+}
+
+
+/* =========================================
+   관리자 작업자 필터
+========================================= */
+
+function setAdminWorkerFilter(
+    filter,
+    button
+) {
+
+    currentAdminWorkerFilter =
+        filter;
+
+
+    document
+        .querySelectorAll(
+            '[data-worker-filter]'
+        )
+        .forEach(
+
+            (item) => {
+
+                item.classList.toggle(
+
+                    'active',
+
+                    item ===
+                    button
+
+                );
+
+            }
+
+        );
+
+
+    applyAdminWorkerFilters();
+
+}
+
+
+/* =========================================
+   관리자 작업자 검색 / 필터
+========================================= */
+
+function applyAdminWorkerFilters() {
+
+    const input =
+        document.getElementById(
+            'adminWorkerSearch'
+        );
+
+
+    const query =
+        (
+            input?.value ||
+            ''
+        )
+            .trim()
+            .toLowerCase();
+
+
+    const rows =
+        document.querySelectorAll(
+            '#adminWorkersTable tbody tr'
+        );
+
+
+    let visibleCount =
+        0;
+
+
+    rows.forEach(
+
+        (row) => {
+
+            const riskMatches =
+
+                currentAdminWorkerFilter ===
+                'all' ||
+
+                row.dataset.risk ===
+                currentAdminWorkerFilter;
+
+
+            const text =
+                (
+                    row.dataset.search ||
+
+                    row.textContent ||
+
+                    ''
+                )
+                    .toLowerCase();
+
+
+            const searchMatches =
+
+                !query ||
+
+                text.includes(
+                    query
+                );
+
+
+            const visible =
+
+                riskMatches &&
+
+                searchMatches;
+
+
+            row.style.display =
+
+                visible
+
+                    ? ''
+
+                    : 'none';
+
+
+            if (visible) {
+
+                visibleCount +=
+                    1;
+
+            }
+
+        }
+
+    );
+
+
+    const empty =
+        document.getElementById(
+            'adminWorkerEmpty'
+        );
+
+
+    if (empty) {
+
+        empty.classList.toggle(
+
+            'hidden',
+
+            visibleCount !==
+            0
+
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   관리자 알림 발송
+========================================= */
+
+function adminSendAlert(
+    workerName,
+    immediate = false
+) {
+
+    showToast(
+
+        immediate
+
+            ? `${workerName} 작업자에게 즉시 휴식 알림을 발송했습니다.`
+
+            : `${workerName} 작업자에게 알림을 발송했습니다.`
+
+    );
+
+}
+
+
+/* =========================================
+   관리자 설정 토글
+========================================= */
+
+function toggleAdminSetting(
+    button
+) {
+
+    if (!button) {
+
+        return;
+
+    }
+
+
+    const key =
+        button.dataset.setting;
+
+
+    const isOn =
+        !button.classList.contains(
+            'on'
+        );
+
+
+    button.classList.toggle(
+
+        'on',
+
+        isOn
+
+    );
+
+
+    button.setAttribute(
+
+        'aria-pressed',
+
+        String(
+            isOn
+        )
+
+    );
+
+
+    if (key) {
+
+        adminSettings.channels[
+            key
+        ] =
+            isOn;
+
+
+        persistAdminSettings();
+
+    }
+
+
+    showToast(
+
+        isOn
+
+            ? '알림 채널을 켰습니다.'
+
+            : '알림 채널을 껐습니다.'
+
+    );
+
+}
+
+
+/* =========================================
+   최초 실행
+========================================= */
+
+window.addEventListener(
+
+    'DOMContentLoaded',
+
+    async () => {
+
+        if (remoteDatabaseEnabled) {
+
+            const loginInput = document.getElementById('loginName');
+            const loginLabel = loginInput?.closest('.field')?.querySelector('span');
+            const rememberRow = document.getElementById('rememberMe')?.closest('.check-row');
+            const demoBox = document.querySelector('#screen-login .demo-box');
+
+            if (loginInput) {
+                loginInput.type = 'email';
+                loginInput.placeholder = '이메일 입력';
+                loginInput.autocomplete = 'email';
+            }
+
+            if (loginLabel) {
+                loginLabel.textContent = '이메일';
+            }
+
+            rememberRow?.classList.add('hidden');
+            demoBox?.classList.add('hidden');
+
+        }
+
+        /*
+           관리자 설정 불러오기
+        */
+        loadAdminSettings();
+
+
+        /*
+           회원가입 초기 상태
+        */
+
+        resetEmployeeVerification(
+            true
+        );
+
+
+        /*
+           기록 화면 초기화
+        */
+
+        renderRecords();
+
+
+        /*
+           사용자 정보 표시
+        */
+
+        syncUserUI();
+
+
+        /*
+           홈 화면 추정 심부체온 초기화
+        */
+
+        updateHomeEstimatedCoreTemp();
+
+
+        /*
+           작업 상태 초기화
+        */
+
+        resetWorkSession();
+
+
+        /*
+           휴식 상태 초기화
+        */
+
+        resetRestSession();
+
+
+        /*
+           시작 화면
+        */
+
+        let restoredUser = null;
+
+        try {
+            restoredUser = remoteDatabaseEnabled
+                ? await getRemoteCurrentUser()
+                : null;
+        }
+        catch (error) {
+            if (!passwordRecoveryMode && !emailConfirmationMode) {
+                console.error('로그인 세션 복원 오류', error);
+                await remoteDatabase.auth.signOut();
+            }
+        }
+
+        if (passwordRecoveryMode) {
+            currentUser = null;
+            showPasswordUpdatePanel();
+        }
+        else if (emailConfirmationMode) {
+            currentUser = null;
+            showEmailConfirmationComplete();
+        }
+        else if (restoredUser?.role === 'worker') {
+            currentUser = restoredUser;
+            syncUserUI();
+            enterWorker();
+        }
+        else {
+            if (restoredUser && remoteDatabaseEnabled) {
+                await remoteDatabase.auth.signOut();
+            }
+
+            currentUser = null;
+            showWorkerScreen('welcome');
+        }
+
+    }
+
+);
