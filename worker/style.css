@@ -7175,3 +7175,1292 @@ select:focus-visible {
     }
 }
 
+
+
+/* =========================================================
+   SHIMON WORKER SIGNUP ONBOARDING V2
+   - STEP 1 / STEP 2 visual stepper
+   - grouped information cards
+   - field icons
+   - green-blue CTA
+   - sensitive health-condition field removed from HTML/JS
+   This block is scoped to #screen-signup.
+========================================================= */
+
+#screen-signup {
+    background:
+        radial-gradient(circle at 82% 2%, rgba(60, 115, 200, .09), transparent 24%),
+        linear-gradient(180deg, #eef2f7 0%, #f4f6f9 100%);
+}
+
+#screen-signup .signup-auth-card {
+    border-color: rgba(255, 255, 255, .82);
+    background: #f8fafc;
+}
+
+#screen-signup .signup-auth-topbar {
+    height: 88px;
+    padding: 0 18px;
+    gap: 13px;
+    background:
+        radial-gradient(circle at 80% 10%, rgba(74, 129, 198, .28), transparent 40%),
+        linear-gradient(135deg, #213162 0%, #17376c 100%);
+}
+
+#screen-signup .signup-topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: #fff;
+}
+
+#screen-signup .signup-topbar-mark {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, .16);
+    border-radius: 11px;
+    background: rgba(255, 255, 255, .08);
+}
+
+#screen-signup .signup-topbar-mark svg {
+    width: 21px;
+    height: 21px;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#screen-signup .signup-topbar-brand > span:last-child {
+    display: grid;
+    gap: 1px;
+}
+
+#screen-signup .signup-topbar-brand strong {
+    font-size: 13px;
+    letter-spacing: .07em;
+}
+
+#screen-signup .signup-topbar-brand small {
+    color: #bcd0ee;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: .12em;
+}
+
+#screen-signup .signup-auth-content {
+    padding: 24px 18px 30px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, .96), #f7f9fc 38%, #f7f9fc 100%);
+}
+
+#screen-signup .signup-heading {
+    margin-bottom: 20px;
+}
+
+#screen-signup .signup-heading .eyebrow {
+    color: #4e7fc3;
+}
+
+#screen-signup .signup-heading h1 {
+    margin: 6px 0 9px;
+    color: #172a52;
+    font-size: 25px;
+    line-height: 1.28;
+    letter-spacing: -.045em;
+}
+
+#screen-signup .signup-heading p:not(.eyebrow) {
+    max-width: 330px;
+    color: #75839a;
+    font-size: 12px;
+    line-height: 1.6;
+    word-break: keep-all;
+}
+
+/* STEP indicator */
+#screen-signup .signup-stepper {
+    position: relative;
+    margin-bottom: 18px;
+    padding: 13px 15px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+    align-items: center;
+    border: 1px solid #dfe7f0;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .88);
+    box-shadow: 0 8px 24px rgba(32, 50, 78, .045);
+}
+
+#screen-signup .signup-step {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    color: #9aa5b4;
+}
+
+#screen-signup .signup-step-circle {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #d7dfe9;
+    border-radius: 50%;
+    background: #f2f5f8;
+    color: #8b98aa;
+    font-size: 10px;
+    font-weight: 800;
+    transition: .18s ease;
+}
+
+#screen-signup .signup-step-copy {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+#screen-signup .signup-step-copy strong {
+    color: #8290a3;
+    font-size: 10px;
+}
+
+#screen-signup .signup-step-copy small {
+    color: #a4aeba;
+    font-size: 7.5px;
+    white-space: nowrap;
+}
+
+#screen-signup .signup-step-connector {
+    height: 2px;
+    border-radius: 999px;
+    background: #dce3ec;
+    transition: .18s ease;
+}
+
+#screen-signup .signup-step.is-active .signup-step-circle {
+    border-color: transparent;
+    background: linear-gradient(135deg, #22ab78, #3c73c8);
+    color: #fff;
+    box-shadow: 0 6px 14px rgba(60, 115, 200, .2);
+}
+
+#screen-signup .signup-step.is-active .signup-step-copy strong,
+#screen-signup .signup-step.is-complete .signup-step-copy strong {
+    color: #213162;
+}
+
+#screen-signup .signup-step.is-complete .signup-step-circle {
+    border-color: rgba(34, 171, 120, .24);
+    background: #e9f8f2;
+    color: #16855b;
+}
+
+#screen-signup .signup-step-connector.is-complete {
+    background: linear-gradient(90deg, #22ab78, #3c73c8);
+}
+
+/* Form/card rhythm */
+#screen-signup .signup-form {
+    gap: 14px;
+}
+
+#screen-signup .signup-step-card,
+#screen-signup .signup-section-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #dfe6ef;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(32, 50, 78, .05);
+}
+
+#screen-signup .signup-step-card {
+    padding: 17px;
+}
+
+#screen-signup .signup-step-card::before,
+#screen-signup .signup-section-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 16px;
+    right: 16px;
+    height: 2px;
+    border-radius: 0 0 999px 999px;
+    background: linear-gradient(90deg, #22ab78, #3c73c8);
+    opacity: .65;
+}
+
+#screen-signup .signup-card-heading,
+#screen-signup .signup-step2-heading,
+#screen-signup .signup-section-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+}
+
+#screen-signup .signup-card-heading {
+    margin-bottom: 16px;
+}
+
+#screen-signup .signup-step2-heading {
+    margin: 4px 2px 13px;
+}
+
+#screen-signup .signup-card-heading > div,
+#screen-signup .signup-step2-heading > div,
+#screen-signup .signup-section-heading > div {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+#screen-signup .signup-card-kicker {
+    color: #4b7fc2;
+    font-size: 7.5px;
+    font-weight: 800;
+    letter-spacing: .12em;
+}
+
+#screen-signup .signup-card-heading strong,
+#screen-signup .signup-step2-heading strong {
+    color: #1c2d4c;
+    font-size: 14px;
+}
+
+#screen-signup .signup-card-heading p,
+#screen-signup .signup-step2-heading p {
+    margin: 0;
+    color: #8591a3;
+    font-size: 9.5px;
+    line-height: 1.5;
+    word-break: keep-all;
+}
+
+#screen-signup .signup-section-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    background: #edf2fa;
+    color: #315d9f;
+}
+
+#screen-signup .signup-section-icon.gradient {
+    background: linear-gradient(135deg, rgba(34, 171, 120, .14), rgba(60, 115, 200, .15));
+    color: #3979bc;
+}
+
+#screen-signup .signup-section-icon svg {
+    width: 21px;
+    height: 21px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* STEP 2 locked/unlocked */
+#screen-signup .signup-details {
+    display: grid;
+    gap: 12px;
+    transition: opacity .18s ease;
+}
+
+#screen-signup .signup-details.is-locked {
+    opacity: .56;
+}
+
+#screen-signup .signup-details.is-locked .signup-section-card {
+    background: #f8fafc;
+}
+
+/* Information groups */
+#screen-signup .signup-section-card {
+    padding: 15px;
+}
+
+#screen-signup .signup-section-heading {
+    margin-bottom: 14px;
+    padding-bottom: 11px;
+    border-bottom: 1px solid #edf1f5;
+}
+
+#screen-signup .signup-section-mini-icon {
+    width: 31px;
+    height: 31px;
+    flex: 0 0 31px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: #edf2fa;
+    color: #315d9f;
+}
+
+#screen-signup .signup-section-mini-icon.gradient {
+    background: linear-gradient(135deg, rgba(34, 171, 120, .14), rgba(60, 115, 200, .15));
+    color: #3979bc;
+}
+
+#screen-signup .signup-section-mini-icon svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#screen-signup .signup-section-heading strong {
+    color: #22324e;
+    font-size: 12px;
+}
+
+#screen-signup .signup-section-heading small {
+    color: #8e9aaa;
+    font-size: 8.5px;
+}
+
+/* Fields */
+#screen-signup .signup-field {
+    gap: 6px;
+}
+
+#screen-signup .signup-field + .signup-field {
+    margin-top: 12px;
+}
+
+#screen-signup .signup-field > span:first-child {
+    color: #4d5c73;
+    font-size: 10.5px;
+    font-weight: 800;
+}
+
+#screen-signup .signup-control {
+    position: relative;
+    display: block;
+}
+
+#screen-signup .signup-control-icon {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    z-index: 2;
+    width: 18px;
+    height: 18px;
+    transform: translateY(-50%);
+    color: #7990af;
+    pointer-events: none;
+}
+
+#screen-signup .signup-control-icon svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#screen-signup .signup-control input,
+#screen-signup .signup-control select {
+    height: 48px;
+    padding-left: 42px;
+    padding-right: 13px;
+    border: 1px solid #dce4ed;
+    border-radius: 13px;
+    background: #f7f9fb;
+    color: #1d2c47;
+    font-size: 12px;
+    transition:
+        border-color .16s ease,
+        background .16s ease,
+        box-shadow .16s ease;
+}
+
+#screen-signup .signup-control.readonly input {
+    background:
+        linear-gradient(135deg, rgba(34, 171, 120, .045), rgba(60, 115, 200, .055)),
+        #f7f9fb;
+    color: #4a5c74;
+    font-weight: 700;
+}
+
+#screen-signup .signup-control:focus-within .signup-control-icon {
+    color: #3c73c8;
+}
+
+#screen-signup .signup-control:focus-within input,
+#screen-signup .signup-control:focus-within select {
+    border-color: rgba(60, 115, 200, .62);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(60, 115, 200, .09);
+}
+
+#screen-signup .signup-control input:disabled,
+#screen-signup .signup-control select:disabled {
+    cursor: not-allowed;
+    opacity: .68;
+}
+
+/* CTA */
+#screen-signup .signup-gradient-cta {
+    min-height: 52px;
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    background: linear-gradient(135deg, #22ab78 0%, #3c73c8 100%);
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(51, 126, 164, .20);
+}
+
+#screen-signup .signup-gradient-cta svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#screen-signup .signup-submit-button {
+    min-height: 54px;
+    background: linear-gradient(135deg, #213162 0%, #294f91 100%);
+    box-shadow: 0 10px 24px rgba(33, 49, 98, .17);
+}
+
+/* Verified result */
+#screen-signup .employee-verify-result {
+    margin-top: 12px;
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid rgba(34, 171, 120, .18);
+    border-radius: 14px;
+    background: #effaf5;
+}
+
+#screen-signup .employee-verify-icon {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #22ab78;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 900;
+}
+
+#screen-signup .employee-verify-copy {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+#screen-signup .employee-verify-copy strong {
+    color: #267454;
+    font-size: 10.5px;
+}
+
+#screen-signup .employee-verify-copy span,
+#screen-signup .employee-verify-copy small {
+    color: #618274;
+    font-size: 8.5px;
+}
+
+#screen-signup .employee-reset-button {
+    border: 0;
+    background: transparent;
+    color: #55766a;
+    font-size: 8.5px;
+    font-weight: 800;
+}
+
+#screen-signup .employee-verify-error {
+    margin: 9px 2px 0;
+    color: #d64a43;
+    font-size: 9px;
+    line-height: 1.45;
+}
+
+#screen-signup .signup-minimum-note {
+    padding: 12px 13px;
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, rgba(34, 171, 120, .07), rgba(60, 115, 200, .07));
+    color: #66758a;
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+#screen-signup .signup-minimum-note svg {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
+    fill: none;
+    stroke: #3b86b5;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Prototype helper is visually secondary */
+#screen-signup .signup-demo-box {
+    margin-top: 16px;
+    padding: 12px 13px;
+    display: grid;
+    gap: 3px;
+    border: 1px dashed #dce3ec;
+    border-radius: 14px;
+    background: #f4f6f9;
+    color: #8793a3;
+    font-size: 9px;
+    line-height: 1.45;
+}
+
+#screen-signup .signup-demo-box strong {
+    color: #58677d;
+    font-size: 9.5px;
+}
+
+#screen-signup .signup-demo-box small {
+    margin-top: 2px;
+    color: #9aa5b2;
+    font-size: 8px;
+}
+
+/* Desktop-sized phone shell still keeps a comfortable mobile rhythm */
+@media (max-width: 520px) {
+    #screen-signup .signup-auth-content {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+
+    #screen-signup .signup-stepper {
+        grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr);
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    #screen-signup .signup-step-copy small {
+        display: none;
+    }
+
+    #screen-signup .signup-step-card,
+    #screen-signup .signup-section-card {
+        border-radius: 18px;
+    }
+}
+
+
+
+/* =========================================================
+   SHIMON WORK SESSION V4
+   작업 진행 중 화면 전용
+   - 기존 원형 타이머/진행 애니메이션은 변경하지 않음
+========================================================= */
+
+#screen-work-progress .work-progress-wrap {
+    padding-bottom: 34px;
+}
+
+#screen-work-progress .work-session-card {
+    position: relative;
+    overflow: hidden;
+    padding: 22px 17px 16px;
+}
+
+#screen-work-progress .work-session-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 18px;
+    right: 18px;
+    height: 3px;
+    border-radius: 0 0 999px 999px;
+    background: linear-gradient(90deg, #22ab78 0%, #3c73c8 100%);
+    opacity: .72;
+}
+
+/* 기존 ring 스타일은 그대로 사용. 아래 grid부터만 신규 스타일 */
+#screen-work-progress .work-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 3px;
+}
+
+#screen-work-progress .work-metric-card {
+    min-width: 0;
+    min-height: 111px;
+    padding: 11px 9px 10px;
+    border: 1px solid #e1e7ef;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background: #f7f9fb;
+}
+
+#screen-work-progress .work-metric-card.core-temp {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(34, 171, 120, .07),
+            rgba(60, 115, 200, .08)
+        ),
+        #f8fbfc;
+}
+
+#screen-work-progress .work-metric-icon {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 8px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    background: #edf2f8;
+    color: #526e9a;
+}
+
+#screen-work-progress .work-metric-card.apparent .work-metric-icon {
+    background: #fff2e6;
+    color: #d47c28;
+}
+
+#screen-work-progress .work-metric-card.risk .work-metric-icon {
+    background: #fff0ee;
+    color: #d94a43;
+}
+
+#screen-work-progress .work-metric-card.core-temp .work-metric-icon {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(34, 171, 120, .15),
+            rgba(60, 115, 200, .16)
+        );
+    color: #3c73c8;
+}
+
+#screen-work-progress .work-metric-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#screen-work-progress .work-metric-label {
+    min-height: 27px;
+    color: #75829a;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.35;
+    word-break: keep-all;
+}
+
+#screen-work-progress .work-metric-card strong {
+    display: block;
+    margin-top: auto;
+    color: #20304e;
+    font-size: 17px;
+    line-height: 1;
+    letter-spacing: -.03em;
+}
+
+#screen-work-progress .work-metric-card.apparent strong {
+    color: #d27624;
+}
+
+#screen-work-progress .work-metric-card.risk strong {
+    color: #e54740 !important;
+}
+
+#screen-work-progress .work-metric-card.core-temp small {
+    margin-top: 4px;
+    padding: 3px 6px;
+    border-radius: 999px;
+    background: #fff2e6;
+    color: #b96f22;
+    font-size: 7px;
+    font-weight: 800;
+}
+
+#screen-work-progress .work-metric-card.core-temp[data-level="normal"] strong {
+    color: #25865f;
+}
+
+#screen-work-progress .work-metric-card.core-temp[data-level="normal"] small {
+    background: #e9f8f2;
+    color: #25865f;
+}
+
+#screen-work-progress .work-metric-card.core-temp[data-level="caution"] strong {
+    color: #d07a28;
+}
+
+#screen-work-progress .work-metric-card.core-temp[data-level="high"] {
+    border-color: rgba(229, 71, 64, .18);
+    background: #fff5f4;
+}
+
+#screen-work-progress .work-metric-card.core-temp[data-level="high"] strong {
+    color: #e54740;
+}
+
+#screen-work-progress .work-metric-card.core-temp[data-level="high"] small {
+    background: #e54740;
+    color: #fff;
+}
+
+#screen-work-progress .work-core-temp-note {
+    width: 100%;
+    margin-top: 9px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: transparent;
+    color: #8793a3;
+    font-size: 8px;
+    text-align: left;
+}
+
+#screen-work-progress .work-core-temp-note strong {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    border: 1px solid #d6dee8;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    color: #65768e;
+    font-size: 8px;
+}
+
+/* 안전 체크 */
+#screen-work-progress .work-safety-card {
+    padding: 17px;
+    margin-bottom: 15px;
+}
+
+#screen-work-progress .work-safety-heading {
+    margin-bottom: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+#screen-work-progress .work-safety-eyebrow {
+    display: block;
+    margin-bottom: 3px;
+    color: #7d8ba1;
+    font-size: 7.5px;
+    font-weight: 800;
+    letter-spacing: .12em;
+}
+
+#screen-work-progress .work-safety-heading h2 {
+    margin: 0;
+    color: #1c2d4b;
+    font-size: 15px;
+}
+
+#screen-work-progress .work-safety-mark {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(34, 171, 120, .13),
+            rgba(60, 115, 200, .14)
+        );
+    color: #397ab9;
+}
+
+#screen-work-progress .work-safety-mark svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#screen-work-progress .work-check-list {
+    display: grid;
+}
+
+#screen-work-progress .work-check-item {
+    min-height: 58px;
+    padding: 10px 0;
+    border-bottom: 1px solid #edf1f5;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+}
+
+#screen-work-progress .work-check-item:last-child {
+    border-bottom: 0;
+    padding-bottom: 2px;
+}
+
+#screen-work-progress .work-check-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    display: grid;
+    place-items: center;
+    background: #edf3fa;
+    color: #4775ab;
+}
+
+#screen-work-progress .work-check-item.water .work-check-icon {
+    background: #eaf4fb;
+    color: #3c82bd;
+}
+
+#screen-work-progress .work-check-item.body .work-check-icon {
+    background: #eaf8f2;
+    color: #2a9168;
+}
+
+#screen-work-progress .work-check-item.alert .work-check-icon {
+    background: #fff3e8;
+    color: #d18431;
+}
+
+#screen-work-progress .work-check-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#screen-work-progress .work-check-item > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+#screen-work-progress .work-check-item strong {
+    color: #435168;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+#screen-work-progress .work-check-item small {
+    color: #8d99a9;
+    font-size: 8.5px;
+    line-height: 1.4;
+    word-break: keep-all;
+}
+
+/* Actions */
+#screen-work-progress .work-session-actions {
+    gap: 9px;
+}
+
+#screen-work-progress .work-rest-gradient-button {
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #22ab78 0%, #3c73c8 100%);
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(45, 127, 164, .22);
+}
+
+#screen-work-progress .work-end-button {
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1.5px solid #e26661;
+    background: #fff;
+    color: #ce423d;
+    box-shadow: 0 5px 14px rgba(229, 71, 64, .06);
+}
+
+#screen-work-progress .work-end-button:hover {
+    background: #fff5f4;
+}
+
+#screen-work-progress .work-action-icon {
+    width: 18px;
+    height: 18px;
+    display: grid;
+    place-items: center;
+}
+
+#screen-work-progress .work-action-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+@media (max-width: 380px) {
+    #screen-work-progress .work-metric-grid {
+        gap: 6px;
+    }
+
+    #screen-work-progress .work-metric-card {
+        min-height: 105px;
+        padding-left: 7px;
+        padding-right: 7px;
+    }
+
+    #screen-work-progress .work-metric-card strong {
+        font-size: 15px;
+    }
+
+    #screen-work-progress .work-metric-label {
+        font-size: 8px;
+    }
+}
+
+
+
+/* =========================================================
+   SHIMON REST + RECORD REFINEMENT V5
+   - 휴식 진행: 제목 가림 방지 + 체크 아이콘
+   - 기록: summary + safety overview 통합, timeline 제거
+========================================================= */
+
+/* ---------------------------------------------------------
+   REST PROGRESS
+--------------------------------------------------------- */
+#screen-rest-progress {
+    scroll-padding-top: 28px;
+}
+
+#screen-rest-progress .rest-progress-wrap {
+    padding-top: 32px;
+}
+
+#screen-rest-progress .rest-progress-heading {
+    position: relative;
+    z-index: 2;
+    margin-bottom: 20px;
+}
+
+#screen-rest-progress .rest-progress-heading h1 {
+    margin-top: 6px;
+}
+
+/* 기존 rest-ring과 .btn-primary는 의도적으로 재정의하지 않음 */
+#screen-rest-progress .rest-check-list {
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+}
+
+#screen-rest-progress .rest-check-item {
+    min-height: 62px;
+    padding: 10px 0;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: center;
+    gap: 11px;
+    border-bottom: 1px solid #edf1f5;
+}
+
+#screen-rest-progress .rest-check-item:last-child {
+    border-bottom: 0;
+    padding-bottom: 2px;
+}
+
+#screen-rest-progress .rest-check-icon {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: #edf3fa;
+    color: #4679b5;
+}
+
+#screen-rest-progress .rest-check-item.shade .rest-check-icon {
+    background: #fff5e8;
+    color: #ce8535;
+}
+
+#screen-rest-progress .rest-check-item.water .rest-check-icon {
+    background: #eaf4fb;
+    color: #3d83bd;
+}
+
+#screen-rest-progress .rest-check-item.condition .rest-check-icon {
+    background: linear-gradient(135deg, rgba(34, 171, 120, .13), rgba(60, 115, 200, .14));
+    color: #3a86aa;
+}
+
+#screen-rest-progress .rest-check-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#screen-rest-progress .rest-check-item > div {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+#screen-rest-progress .rest-check-item strong {
+    color: #425168;
+    font-size: 11.5px;
+    line-height: 1.35;
+}
+
+#screen-rest-progress .rest-check-item small {
+    color: #8b97a7;
+    font-size: 8.5px;
+    line-height: 1.45;
+    word-break: keep-all;
+}
+
+/* ---------------------------------------------------------
+   RECORD — simplified hierarchy
+--------------------------------------------------------- */
+#screen-record .record-simplified-wrap .segmented-control {
+    margin-bottom: 14px;
+}
+
+#screen-record .record-daily-summary {
+    margin-bottom: 22px;
+    padding: 18px;
+}
+
+#screen-record .record-daily-heading {
+    margin-bottom: 15px;
+}
+
+#screen-record .record-daily-heading > div:first-child {
+    min-width: 0;
+}
+
+#screen-record .record-daily-heading h2 {
+    font-size: 17px;
+}
+
+#screen-record .record-daily-heading p {
+    margin: 5px 0 0;
+    color: #8a96a7;
+    font-size: 9px;
+    line-height: 1.45;
+    word-break: keep-all;
+}
+
+/* 핵심 지표: 가장 크게 */
+#screen-record .record-summary-hero-grid {
+    display: grid;
+    grid-template-columns: 1.05fr .95fr;
+    gap: 9px;
+}
+
+#screen-record .record-summary-hero {
+    min-width: 0;
+    min-height: 112px;
+    padding: 13px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    border: 1px solid #e2e8f0;
+    border-radius: 15px;
+    background: #f7f9fb;
+}
+
+#screen-record .record-summary-hero.work-total {
+    background:
+        linear-gradient(145deg, rgba(33,49,98,.035), rgba(60,115,200,.055)),
+        #f8fafc;
+}
+
+#screen-record .record-summary-hero.core-temp {
+    background:
+        linear-gradient(145deg, rgba(34,171,120,.07), rgba(60,115,200,.075)),
+        #f8fbfc;
+}
+
+#screen-record .record-summary-icon {
+    width: 31px;
+    height: 31px;
+    margin-bottom: 9px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: #edf2fa;
+    color: #376aa8;
+}
+
+#screen-record .record-summary-hero.core-temp .record-summary-icon {
+    background: linear-gradient(135deg, rgba(34,171,120,.14), rgba(60,115,200,.15));
+    color: #3b83b3;
+}
+
+#screen-record .record-summary-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#screen-record .record-summary-label {
+    min-height: 25px;
+    color: #78869a;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.35;
+    word-break: keep-all;
+}
+
+#screen-record .record-summary-label b {
+    color: #3d79b9;
+    font-size: 7px;
+    font-weight: 800;
+}
+
+#screen-record .record-summary-hero > strong {
+    margin-top: auto;
+    color: #1c2d4b;
+    font-size: 21px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -.035em;
+}
+
+#screen-record .record-summary-hero.core-temp > strong {
+    color: #2f7d72;
+}
+
+#screen-record .record-summary-hero > small {
+    margin-top: 5px;
+    color: #8d99a8;
+    font-size: 7.5px;
+    line-height: 1.3;
+}
+
+/* 부가 지표: 작고 빠르게 스캔 */
+#screen-record .record-summary-mini-grid {
+    margin-top: 9px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+}
+
+#screen-record .record-summary-mini {
+    min-width: 0;
+    padding: 11px 9px;
+    border-radius: 13px;
+    background: #f5f7fa;
+}
+
+#screen-record .record-summary-mini span {
+    display: block;
+    min-height: 24px;
+    margin-bottom: 5px;
+    color: #8a96a6;
+    font-size: 8px;
+    line-height: 1.35;
+    word-break: keep-all;
+}
+
+#screen-record .record-summary-mini strong {
+    display: block;
+    color: #35445b;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.15;
+}
+
+/* 기존 메시지는 카드 최하단에 배치 */
+#screen-record .record-summary-message {
+    margin-top: 12px;
+}
+
+#screen-record .record-summary-message > span {
+    padding: 0;
+}
+
+#screen-record .record-summary-message > span svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#screen-record .record-list-heading {
+    margin-top: 0;
+}
+
+@media (max-width: 370px) {
+    #screen-rest-progress .rest-progress-wrap {
+        padding-top: 28px;
+    }
+
+    #screen-record .record-summary-hero > strong {
+        font-size: 19px;
+    }
+
+    #screen-record .record-summary-mini {
+        padding-left: 7px;
+        padding-right: 7px;
+    }
+
+    #screen-record .record-summary-mini strong {
+        font-size: 12px;
+    }
+}
+

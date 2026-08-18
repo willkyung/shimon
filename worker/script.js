@@ -12,8 +12,7 @@ const demoUsers = {
         jobType: '토목 작업',
         workplace: '부산 북항 현장',
         workIntensity: '보통',
-        uniform: '착용',
-        healthCondition: '없음'
+        uniform: '착용'
     },
 
     '관리자': {
@@ -29,8 +28,7 @@ const demoUsers = {
         jobType: '-',
         workplace: '통합 관제 센터',
         workIntensity: '-',
-        uniform: '-',
-        healthCondition: '-'
+        uniform: '-'
     }
 };
 
@@ -167,6 +165,37 @@ function updateHomeEstimatedCoreTemp(value = estimatedCoreTemp) {
 
     if (stateEl) {
         stateEl.textContent = state.label;
+    }
+
+
+    const workCard =
+        document.getElementById(
+            'workCoreTempCard'
+        );
+
+    const workValueEl =
+        document.getElementById(
+            'workEstimatedCoreTemp'
+        );
+
+    const workStateEl =
+        document.getElementById(
+            'workEstimatedCoreTempState'
+        );
+
+    if (workCard) {
+        workCard.dataset.level =
+            state.level;
+    }
+
+    if (workValueEl) {
+        workValueEl.textContent =
+            `${numericValue.toFixed(1)}℃`;
+    }
+
+    if (workStateEl) {
+        workStateEl.textContent =
+            state.label;
     }
 
 }
@@ -652,6 +681,37 @@ function showWorkerScreen(
 
     }
 
+
+    if (
+        screenName ===
+        'work-progress'
+    ) {
+
+        updateHomeEstimatedCoreTemp();
+
+    }
+
+
+    if (
+        screenName ===
+        'rest-progress'
+    ) {
+
+        const restProgressScreen =
+            document.getElementById(
+                'screen-rest-progress'
+            );
+
+        if (restProgressScreen) {
+            requestAnimationFrame(
+                () => {
+                    restProgressScreen.scrollTop = 0;
+                }
+            );
+        }
+
+    }
+
 }
 
 
@@ -723,11 +783,85 @@ function setEmployeeVerifyError(
 }
 
 
+
+function setSignupStep(step = 1) {
+
+    const numericStep =
+        Number(step) === 2
+            ? 2
+            : 1;
+
+    const stepper =
+        document.getElementById(
+            'signupStepper'
+        );
+
+    if (!stepper) {
+        return;
+    }
+
+    stepper.dataset.step =
+        String(numericStep);
+
+    stepper
+        .querySelectorAll(
+            '[data-signup-step]'
+        )
+        .forEach(
+            (item) => {
+
+                const itemStep =
+                    Number(
+                        item.dataset.signupStep
+                    );
+
+                item.classList.toggle(
+                    'is-active',
+                    itemStep === numericStep
+                );
+
+                item.classList.toggle(
+                    'is-complete',
+                    itemStep < numericStep
+                );
+
+                if (
+                    itemStep === numericStep
+                ) {
+                    item.setAttribute(
+                        'aria-current',
+                        'step'
+                    );
+                }
+                else {
+                    item.removeAttribute(
+                        'aria-current'
+                    );
+                }
+
+            }
+        );
+
+    const connector =
+        stepper.querySelector(
+            '.signup-step-connector'
+        );
+
+    connector?.classList.toggle(
+        'is-complete',
+        numericStep >= 2
+    );
+
+}
+
+
 function setSignupDetailsEnabled(
     enabled
 ) {
 
-    const details =
+    
+    setSignupStep(enabled ? 2 : 1);
+const details =
         document.getElementById(
             'signupDetails'
         );
@@ -825,8 +959,7 @@ function toggleWorkerFields() {
         'signupAge',
         'signupJobType',
         'signupWorkplace',
-        'signupUniform',
-        'signupHealthCondition'
+        'signupUniform'
     ].forEach(
 
         (id) => {
@@ -1281,7 +1414,6 @@ function resetEmployeeVerification(
 
         const health =
             document.getElementById(
-                'signupHealthCondition'
             );
 
 
@@ -1289,14 +1421,6 @@ function resetEmployeeVerification(
 
             uniform.value =
                 '착용';
-
-        }
-
-
-        if (health) {
-
-            health.value =
-                '없음';
 
         }
 
@@ -1600,7 +1724,6 @@ function handleSignup(event) {
 
                 ? document
                     .getElementById(
-                        'signupHealthCondition'
                     )
                     ?.value ||
 
@@ -2021,13 +2144,6 @@ function syncUserUI() {
 
             : '-'
 
-    );
-
-
-    setText(
-        'profileHealthCondition',
-        user.healthCondition ||
-        '-'
     );
 
 
@@ -3717,15 +3833,7 @@ function renderRecords() {
                 ...coreTemperatures
             )
             : 0;
-
-
-    const summary =
-        document.getElementById(
-            'recordSummary'
-        );
-
-
-    const recordList =
+const recordList =
         document.getElementById(
             'recordList'
         );
@@ -3738,7 +3846,6 @@ function renderRecords() {
     */
 
     if (
-        !summary ||
         !recordList
     ) {
 
@@ -3747,45 +3854,18 @@ function renderRecords() {
         return;
 
     }
-
-
-    /*
-       기록 상단 2개 카드
-    */
-
-    summary.innerHTML = `
-
-        <article class="card summary-card">
-
-            <span>
-                오늘 ${typeLabel}
-            </span>
-
-            <strong>
-                ${list.length}회
-            </strong>
-
-        </article>
-
-
-        <article class="card summary-card">
-
-            <span>
-                총 ${typeLabel}시간
-            </span>
-
-            <strong>
-                ${totalMinutes}분
-            </strong>
-
-        </article>
-
-    `;
-
-
-    /*
+/*
        오늘의 안전 요약
     */
+
+    setText(
+
+        'recordWorkCount',
+
+        `${workRecords.length}회`
+
+    );
+
 
     setText(
 
@@ -3876,7 +3956,6 @@ function renderRecords() {
             highestRisk.level;
     }
 
-    renderRecordTimeline();
 
 
     /*

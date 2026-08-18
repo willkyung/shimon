@@ -269,69 +269,146 @@
 
                 <section id="screen-signup" class="screen auth-screen long-screen">
 
-                    <div class="auth-card">
+                    <div class="auth-card signup-auth-card">
 
-                        <div class="auth-topbar">
+                        <div class="auth-topbar signup-auth-topbar">
 
                             <button class="back-button auth-back" type="button" onclick="showWorkerScreen('welcome')"
                                 aria-label="뒤로 가기">
                                 ←
                             </button>
 
+                            <div class="signup-topbar-brand">
+                                <span class="signup-topbar-mark" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M12 3 20 6v5c0 5.2-3.5 8.2-8 10-4.5-1.8-8-4.8-8-10V6l8-3Z"></path>
+                                        <path d="M6.8 12h3l1.2-2.5 2.2 5 1.5-3 1.1 1.8H18"></path>
+                                    </svg>
+                                </span>
+                                <span>
+                                    <strong>SHIMON</strong>
+                                    <small>WORKER ONBOARDING</small>
+                                </span>
+                            </div>
+
                         </div>
 
 
-                        <div class="auth-content">
+                        <div class="auth-content signup-auth-content">
 
-                            <div class="section-heading">
+                            <div class="section-heading signup-heading">
 
                                 <p class="eyebrow">
                                     CREATE ACCOUNT
                                 </p>
 
                                 <h1>
-                                    회원가입
+                                    안전한 작업을 위한<br />
+                                    첫 설정을 시작해요
                                 </h1>
 
                                 <p>
-                                    회사에서 부여받은 사원코드와 이름으로
-                                    소속 및 사용자 권한을 먼저 확인합니다.
+                                    회사 등록 정보를 확인한 뒤, 근로 환경에 필요한 정보만 입력합니다.
                                 </p>
 
                             </div>
 
 
-                            <form id="signupForm" class="form-stack" onsubmit="handleSignup(event)">
+                            <div id="signupStepper" class="signup-stepper" data-step="1"
+                                aria-label="회원가입 진행 단계">
 
-                                <div class="employee-verification-card">
+                                <div class="signup-step is-active" data-signup-step="1" aria-current="step">
+                                    <span class="signup-step-circle">1</span>
+                                    <span class="signup-step-copy">
+                                        <strong>사원 확인</strong>
+                                        <small>소속·권한 확인</small>
+                                    </span>
+                                </div>
 
-                                    <div class="employee-verification-heading">
-                                        <span class="verification-step">STEP 1</span>
+                                <span class="signup-step-connector" aria-hidden="true"></span>
+
+                                <div class="signup-step" data-signup-step="2">
+                                    <span class="signup-step-circle">2</span>
+                                    <span class="signup-step-copy">
+                                        <strong>정보 입력</strong>
+                                        <small>계정·작업 정보</small>
+                                    </span>
+                                </div>
+
+                            </div>
+
+
+                            <form id="signupForm" class="form-stack signup-form" onsubmit="handleSignup(event)">
+
+                                <!-- STEP 1 -->
+                                <div class="employee-verification-card signup-step-card">
+
+                                    <div class="signup-card-heading">
+
+                                        <span class="signup-section-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24">
+                                                <path d="M12 3 20 6v5c0 5.2-3.5 8.2-8 10-4.5-1.8-8-4.8-8-10V6l8-3Z"></path>
+                                                <path d="m9 12 2 2 4-4"></path>
+                                            </svg>
+                                        </span>
+
                                         <div>
-                                            <strong>사원 확인</strong>
-                                            <p>회사에 등록된 사원코드와 이름을 입력해주세요.</p>
+                                            <span class="signup-card-kicker">STEP 01</span>
+                                            <strong>회사 등록 정보 확인</strong>
+                                            <p>사원코드와 이름으로 소속과 사용자 권한을 확인합니다.</p>
                                         </div>
+
                                     </div>
 
-                                    <label class="field">
+
+                                    <label class="field signup-field">
                                         <span>사원코드</span>
-                                        <input id="signupEmployeeCode" type="text" placeholder="예: HB-W001"
-                                            autocomplete="off" autocapitalize="characters" required />
+
+                                        <span class="signup-control">
+                                            <span class="signup-control-icon" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24">
+                                                    <rect x="4" y="5" width="16" height="14" rx="3"></rect>
+                                                    <path d="M8 9h5M8 13h8"></path>
+                                                </svg>
+                                            </span>
+
+                                            <input id="signupEmployeeCode" type="text" placeholder="예: HB-W001"
+                                                autocomplete="off" autocapitalize="characters" required />
+                                        </span>
                                     </label>
 
-                                    <label class="field">
+
+                                    <label class="field signup-field">
                                         <span>이름</span>
-                                        <input id="signupName" type="text" placeholder="회사에 등록된 이름" required />
+
+                                        <span class="signup-control">
+                                            <span class="signup-control-icon" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24">
+                                                    <circle cx="12" cy="8" r="3.2"></circle>
+                                                    <path d="M5.5 20c.7-4 3-6 6.5-6s5.8 2 6.5 6"></path>
+                                                </svg>
+                                            </span>
+
+                                            <input id="signupName" type="text" placeholder="회사에 등록된 이름" required />
+                                        </span>
                                     </label>
 
-                                    <button id="employeeVerifyButton" class="btn employee-verify-button" type="button"
+
+                                    <button id="employeeVerifyButton"
+                                        class="btn employee-verify-button signup-gradient-cta" type="button"
                                         onclick="verifyEmployeeCode()">
-                                        사원 확인
+                                        <span>사원 확인</span>
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="m9 5 7 7-7 7"></path>
+                                        </svg>
                                     </button>
+
 
                                     <div id="employeeVerifyResult" class="employee-verify-result hidden"
                                         aria-live="polite">
+
                                         <div class="employee-verify-icon">✓</div>
+
                                         <div class="employee-verify-copy">
                                             <strong>소속이 확인되었습니다.</strong>
                                             <span id="verifiedCompanyText">-</span>
@@ -341,11 +418,14 @@
                                                 <span id="verifiedRoleText">-</span>
                                             </small>
                                         </div>
+
                                         <button class="employee-reset-button" type="button"
                                             onclick="resetEmployeeVerification(false)">
                                             다시 입력
                                         </button>
+
                                     </div>
+
 
                                     <p id="employeeVerifyError" class="employee-verify-error hidden" aria-live="polite">
                                     </p>
@@ -353,103 +433,297 @@
                                 </div>
 
 
+                                <!-- STEP 2 -->
                                 <div id="signupDetails" class="signup-details is-locked">
 
-                                    <div class="signup-details-heading">
-                                        <span class="verification-step">STEP 2</span>
+                                    <div class="signup-step2-heading">
+
+                                        <span class="signup-section-icon gradient" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24">
+                                                <path d="M4 19v-2.5A3.5 3.5 0 0 1 7.5 13h9a3.5 3.5 0 0 1 3.5 3.5V19"></path>
+                                                <circle cx="12" cy="7.5" r="3.5"></circle>
+                                            </svg>
+                                        </span>
+
                                         <div>
-                                            <strong>개인 정보 입력</strong>
-                                            <p>사원 확인 후 계정 정보를 입력할 수 있습니다.</p>
+                                            <span class="signup-card-kicker">STEP 02</span>
+                                            <strong>필요한 정보만 입력해요</strong>
+                                            <p>폭염 안전관리와 계정 사용에 필요한 최소 정보로 구성했습니다.</p>
                                         </div>
+
                                     </div>
 
                                     <input id="signupRole" type="hidden" value="" />
 
-                                    <label class="field">
-                                        <span>회사명</span>
-                                        <input id="signupCompany" type="text" placeholder="사원 확인 후 자동 입력" readonly />
-                                    </label>
 
-                                    <label class="field">
-                                        <span>성별</span>
-                                        <select id="signupGender" disabled required>
-                                            <option value="">선택</option>
-                                            <option value="남성">남성</option>
-                                            <option value="여성">여성</option>
-                                            <option value="기타">기타</option>
-                                        </select>
-                                    </label>
+                                    <!-- 기본 정보 -->
+                                    <section class="signup-section-card">
 
-                                    <label class="field">
-                                        <span>전화번호</span>
-                                        <input id="signupPhone" type="tel" placeholder="010-1234-5678" disabled
-                                            required />
-                                    </label>
-
-                                    <label class="field">
-                                        <span>이메일</span>
-                                        <input id="signupEmail" type="email" placeholder="example@email.com" disabled
-                                            required />
-                                    </label>
+                                        <div class="signup-section-heading">
+                                            <span class="signup-section-mini-icon" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24">
+                                                    <circle cx="12" cy="8" r="3"></circle>
+                                                    <path d="M5.5 20c.6-4 3-6 6.5-6s5.9 2 6.5 6"></path>
+                                                </svg>
+                                            </span>
+                                            <div>
+                                                <strong>기본 정보</strong>
+                                                <small>회사 등록 정보와 기본 프로필</small>
+                                            </div>
+                                        </div>
 
 
-                                    <div id="workerOnlyFields" class="worker-only-fields">
+                                        <label class="field signup-field">
+                                            <span>회사명</span>
 
-                                        <label class="field">
-                                            <span>연령</span>
-                                            <input id="signupAge" type="number" min="18" max="80" placeholder="예: 42"
-                                                disabled />
+                                            <span class="signup-control readonly">
+                                                <span class="signup-control-icon" aria-hidden="true">
+                                                    <svg viewBox="0 0 24 24">
+                                                        <path d="M4 20V7l8-4 8 4v13"></path>
+                                                        <path d="M8 10h2M14 10h2M8 14h2M14 14h2"></path>
+                                                    </svg>
+                                                </span>
+
+                                                <input id="signupCompany" type="text" placeholder="사원 확인 후 자동 입력"
+                                                    readonly />
+                                            </span>
                                         </label>
 
-                                        <label class="field">
-                                            <span>작업 유형</span>
-                                            <input id="signupJobType" type="text" placeholder="예: 건설 / 토목 / 도로 작업"
-                                                disabled />
+
+                                        <label class="field signup-field">
+                                            <span>성별</span>
+
+                                            <span class="signup-control">
+                                                <span class="signup-control-icon" aria-hidden="true">
+                                                    <svg viewBox="0 0 24 24">
+                                                        <circle cx="10" cy="10" r="4"></circle>
+                                                        <path d="M13 7l5-5M15 2h3v3M10 14v6M7.5 18h5"></path>
+                                                    </svg>
+                                                </span>
+
+                                                <select id="signupGender" disabled required>
+                                                    <option value="">선택</option>
+                                                    <option value="남성">남성</option>
+                                                    <option value="여성">여성</option>
+                                                    <option value="기타">기타</option>
+                                                </select>
+                                            </span>
                                         </label>
 
-                                        <label class="field">
-                                            <span>작업 장소</span>
-                                            <input id="signupWorkplace" type="text" placeholder="예: 부산 북항 현장"
-                                                disabled />
+                                    </section>
+
+
+                                    <!-- 연락처 -->
+                                    <section class="signup-section-card">
+
+                                        <div class="signup-section-heading">
+                                            <span class="signup-section-mini-icon" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24">
+                                                    <path d="M6.5 4h3l1.5 4-2 1.7a14 14 0 0 0 5.3 5.3l1.7-2 4 1.5v3c0 1.4-1.1 2.5-2.5 2.5C10 20 4 14 4 6.5 4 5.1 5.1 4 6.5 4Z"></path>
+                                                </svg>
+                                            </span>
+                                            <div>
+                                                <strong>연락처</strong>
+                                                <small>안전 알림과 계정 확인에 사용</small>
+                                            </div>
+                                        </div>
+
+
+                                        <label class="field signup-field">
+                                            <span>전화번호</span>
+
+                                            <span class="signup-control">
+                                                <span class="signup-control-icon" aria-hidden="true">
+                                                    <svg viewBox="0 0 24 24">
+                                                        <path d="M6.5 4h3l1.5 4-2 1.7a14 14 0 0 0 5.3 5.3l1.7-2 4 1.5v3c0 1.4-1.1 2.5-2.5 2.5C10 20 4 14 4 6.5 4 5.1 5.1 4 6.5 4Z"></path>
+                                                    </svg>
+                                                </span>
+
+                                                <input id="signupPhone" type="tel" placeholder="010-1234-5678" disabled
+                                                    required />
+                                            </span>
                                         </label>
 
-                                        <label class="field">
-                                            <span>작업복 착용 여부</span>
-                                            <select id="signupUniform" disabled>
-                                                <option value="착용">착용</option>
-                                                <option value="미착용">미착용</option>
-                                            </select>
+
+                                        <label class="field signup-field">
+                                            <span>이메일</span>
+
+                                            <span class="signup-control">
+                                                <span class="signup-control-icon" aria-hidden="true">
+                                                    <svg viewBox="0 0 24 24">
+                                                        <rect x="3" y="5" width="18" height="14" rx="3"></rect>
+                                                        <path d="m5 8 7 5 7-5"></path>
+                                                    </svg>
+                                                </span>
+
+                                                <input id="signupEmail" type="email" placeholder="example@email.com" disabled
+                                                    required />
+                                            </span>
                                         </label>
 
-                                        <label class="field">
-                                            <span>신체 질환</span>
-                                            <select id="signupHealthCondition" disabled>
-                                                <option value="없음">없음</option>
-                                                <option value="고혈압">고혈압</option>
-                                                <option value="심혈관 질환">심혈관 질환</option>
-                                                <option value="당뇨">당뇨</option>
-                                                <option value="호흡기 질환">호흡기 질환</option>
-                                                <option value="기타">기타</option>
-                                            </select>
-                                        </label>
+                                    </section>
+
+
+                                    <!-- 노동자 전용 작업 정보 -->
+                                    <div id="workerOnlyFields" class="worker-only-fields signup-worker-section">
+
+                                        <section class="signup-section-card">
+
+                                            <div class="signup-section-heading">
+                                                <span class="signup-section-mini-icon gradient" aria-hidden="true">
+                                                    <svg viewBox="0 0 24 24">
+                                                        <path d="M4 19h16M6 19v-5h12v5M8 14V9h8v5"></path>
+                                                        <path d="M7 9c.3-3 2.3-5 5-5s4.7 2 5 5"></path>
+                                                    </svg>
+                                                </span>
+                                                <div>
+                                                    <strong>작업 정보</strong>
+                                                    <small>개인별 휴식 안내에 필요한 작업 조건</small>
+                                                </div>
+                                            </div>
+
+
+                                            <label class="field signup-field">
+                                                <span>연령</span>
+
+                                                <span class="signup-control">
+                                                    <span class="signup-control-icon" aria-hidden="true">
+                                                        <svg viewBox="0 0 24 24">
+                                                            <circle cx="12" cy="12" r="8"></circle>
+                                                            <path d="M12 8v4l2.5 2"></path>
+                                                        </svg>
+                                                    </span>
+
+                                                    <input id="signupAge" type="number" min="18" max="80"
+                                                        placeholder="예: 42" disabled />
+                                                </span>
+                                            </label>
+
+
+                                            <label class="field signup-field">
+                                                <span>작업 유형</span>
+
+                                                <span class="signup-control">
+                                                    <span class="signup-control-icon" aria-hidden="true">
+                                                        <svg viewBox="0 0 24 24">
+                                                            <path d="M4 19h16M6 19v-7h12v7M8 12V8h8v4"></path>
+                                                            <path d="M9 8V5h6v3"></path>
+                                                        </svg>
+                                                    </span>
+
+                                                    <input id="signupJobType" type="text"
+                                                        placeholder="예: 건설 / 토목 / 도로 작업" disabled />
+                                                </span>
+                                            </label>
+
+
+                                            <label class="field signup-field">
+                                                <span>작업 장소</span>
+
+                                                <span class="signup-control">
+                                                    <span class="signup-control-icon" aria-hidden="true">
+                                                        <svg viewBox="0 0 24 24">
+                                                            <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"></path>
+                                                            <circle cx="12" cy="10" r="2.4"></circle>
+                                                        </svg>
+                                                    </span>
+
+                                                    <input id="signupWorkplace" type="text"
+                                                        placeholder="예: 부산 북항 현장" disabled />
+                                                </span>
+                                            </label>
+
+
+                                            <label class="field signup-field">
+                                                <span>작업복 착용 여부</span>
+
+                                                <span class="signup-control">
+                                                    <span class="signup-control-icon" aria-hidden="true">
+                                                        <svg viewBox="0 0 24 24">
+                                                            <path d="M8 4 4 7l2 4 2-1v10h8V10l2 1 2-4-4-3-2 2h-4L8 4Z"></path>
+                                                        </svg>
+                                                    </span>
+
+                                                    <select id="signupUniform" disabled>
+                                                        <option value="착용">착용</option>
+                                                        <option value="미착용">미착용</option>
+                                                    </select>
+                                                </span>
+                                            </label>
+
+                                        </section>
 
                                     </div>
 
 
-                                    <label class="field">
-                                        <span>비밀번호</span>
-                                        <input id="signupPassword" type="password" placeholder="비밀번호" disabled
-                                            required />
-                                    </label>
+                                    <!-- 계정 정보 -->
+                                    <section class="signup-section-card">
 
-                                    <label class="field">
-                                        <span>비밀번호 확인</span>
-                                        <input id="signupPasswordConfirm" type="password" placeholder="비밀번호 다시 입력"
-                                            disabled required />
-                                    </label>
+                                        <div class="signup-section-heading">
+                                            <span class="signup-section-mini-icon" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24">
+                                                    <rect x="5" y="10" width="14" height="10" rx="3"></rect>
+                                                    <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+                                                </svg>
+                                            </span>
+                                            <div>
+                                                <strong>계정 정보</strong>
+                                                <small>로그인에 사용할 비밀번호를 설정</small>
+                                            </div>
+                                        </div>
 
-                                    <button id="signupSubmitButton" class="btn btn-primary" type="submit" disabled>
-                                        회원가입
+
+                                        <label class="field signup-field">
+                                            <span>비밀번호</span>
+
+                                            <span class="signup-control">
+                                                <span class="signup-control-icon" aria-hidden="true">
+                                                    <svg viewBox="0 0 24 24">
+                                                        <rect x="5" y="10" width="14" height="10" rx="3"></rect>
+                                                        <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v2"></path>
+                                                    </svg>
+                                                </span>
+
+                                                <input id="signupPassword" type="password"
+                                                    placeholder="비밀번호" disabled required />
+                                            </span>
+                                        </label>
+
+
+                                        <label class="field signup-field">
+                                            <span>비밀번호 확인</span>
+
+                                            <span class="signup-control">
+                                                <span class="signup-control-icon" aria-hidden="true">
+                                                    <svg viewBox="0 0 24 24">
+                                                        <rect x="5" y="10" width="14" height="10" rx="3"></rect>
+                                                        <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+                                                        <path d="m9 15 2 2 4-4"></path>
+                                                    </svg>
+                                                </span>
+
+                                                <input id="signupPasswordConfirm" type="password"
+                                                    placeholder="비밀번호 다시 입력" disabled required />
+                                            </span>
+                                        </label>
+
+                                    </section>
+
+
+                                    <div class="signup-minimum-note">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M12 3 20 6v5c0 5.2-3.5 8.2-8 10-4.5-1.8-8-4.8-8-10V6l8-3Z"></path>
+                                            <path d="m9 12 2 2 4-4"></path>
+                                        </svg>
+                                        <span>
+                                            안전관리와 계정 운영에 필요한 최소 정보만 입력받습니다.
+                                        </span>
+                                    </div>
+
+
+                                    <button id="signupSubmitButton" class="btn btn-primary signup-submit-button"
+                                        type="submit" disabled>
+                                        회원가입 완료
                                     </button>
 
                                 </div>
@@ -647,9 +921,10 @@
              작업 진행
         ======================================= -->
 
-                <section id="screen-work-progress" class="screen content-screen">
+                
+<section id="screen-work-progress" class="screen content-screen">
 
-                    <div class="content-wrap">
+                    <div class="content-wrap work-progress-wrap">
 
                         <div class="section-heading compact">
 
@@ -668,10 +943,9 @@
                         </div>
 
 
-                        <article class="card progress-card">
+                        <article class="card progress-card work-session-card">
 
-                            <!-- 2시간 기준 원형 타이머 -->
-
+                            <!-- 기존 원형 타이머 / 진행 애니메이션 유지 -->
                             <div id="workRing" class="progress-ring work-ring">
 
                                 <svg class="ring-ekg" viewBox="0 0 64 18" aria-hidden="true">
@@ -693,11 +967,18 @@
                             </div>
 
 
-                            <div class="progress-meta">
+                            <div class="work-metric-grid" aria-label="현재 작업 안전 지표">
 
-                                <div>
+                                <div class="work-metric-card apparent">
 
-                                    <span>
+                                    <span class="work-metric-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M14 4a2 2 0 0 0-4 0v9.1a5 5 0 1 0 4 0V4Z"></path>
+                                            <path d="M12 8v7"></path>
+                                        </svg>
+                                    </span>
+
+                                    <span class="work-metric-label">
                                         체감온도
                                     </span>
 
@@ -708,9 +989,17 @@
                                 </div>
 
 
-                                <div>
+                                <div class="work-metric-card risk">
 
-                                    <span>
+                                    <span class="work-metric-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M12 3 20 6v5c0 5.2-3.5 8.2-8 10-4.5-1.8-8-4.8-8-10V6l8-3Z"></path>
+                                            <path d="M12 8v5"></path>
+                                            <path d="M12 16.5h.01"></path>
+                                        </svg>
+                                    </span>
+
+                                    <span class="work-metric-label">
                                         현재 위험도
                                     </span>
 
@@ -720,41 +1009,136 @@
 
                                 </div>
 
+
+                                <div id="workCoreTempCard" class="work-metric-card core-temp" data-level="caution">
+
+                                    <span class="work-metric-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M3 12h4l1.7-3.5 3.1 7.3 2.2-5 1.3 2.6H21"></path>
+                                        </svg>
+                                    </span>
+
+                                    <span class="work-metric-label">
+                                        AI 추정<br />심부체온
+                                    </span>
+
+                                    <strong id="workEstimatedCoreTemp">
+                                        37.6℃
+                                    </strong>
+
+                                    <small id="workEstimatedCoreTempState">
+                                        주의
+                                    </small>
+
+                                </div>
+
+                            </div>
+
+
+                            <button class="work-core-temp-note" type="button"
+                                onclick="showToast('체감온도·연령·작업강도·PPE·연속작업시간을 바탕으로 계산한 AI 추정값이며, 실측 체온이 아닙니다.')">
+                                <span>AI 추정 심부체온은 실측 체온이 아닙니다.</span>
+                                <strong>i</strong>
+                            </button>
+
+                        </article>
+
+
+                        <article class="card checklist-card work-safety-card">
+
+                            <div class="work-safety-heading">
+
+                                <div>
+                                    <span class="work-safety-eyebrow">SAFETY CHECK</span>
+                                    <h2>안전 체크</h2>
+                                </div>
+
+                                <span class="work-safety-mark" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M12 3 20 6v5c0 5.2-3.5 8.2-8 10-4.5-1.8-8-4.8-8-10V6l8-3Z"></path>
+                                        <path d="m9 12 2 2 4-4"></path>
+                                    </svg>
+                                </span>
+
+                            </div>
+
+
+                            <div class="work-check-list">
+
+                                <div class="work-check-item water">
+
+                                    <span class="work-check-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M12 3S6 10 6 15a6 6 0 0 0 12 0c0-5-6-12-6-12Z"></path>
+                                            <path d="M9 16c.5 1.4 1.5 2 3 2"></path>
+                                        </svg>
+                                    </span>
+
+                                    <div>
+                                        <strong>수분을 가까이 두기</strong>
+                                        <small>작업 중 조금씩 자주 섭취하세요.</small>
+                                    </div>
+
+                                </div>
+
+
+                                <div class="work-check-item body">
+
+                                    <span class="work-check-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M3 12h4l1.7-3.5 3.1 7.3 2.2-5 1.3 2.6H21"></path>
+                                        </svg>
+                                    </span>
+
+                                    <div>
+                                        <strong>몸 상태 이상 시 바로 휴식</strong>
+                                        <small>어지럼·두통 등 이상 증상을 무시하지 마세요.</small>
+                                    </div>
+
+                                </div>
+
+
+                                <div class="work-check-item alert">
+
+                                    <span class="work-check-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M18 8a6 6 0 0 0-12 0c0 6-2.6 6.7-2.6 8.3h17.2C20.6 14.7 18 14 18 8Z"></path>
+                                            <path d="M9.5 20h5"></path>
+                                        </svg>
+                                    </span>
+
+                                    <div>
+                                        <strong>휴식 알림 확인하기</strong>
+                                        <small>권장 휴식 알림이 오면 작업을 멈추고 확인하세요.</small>
+                                    </div>
+
+                                </div>
+
                             </div>
 
                         </article>
 
 
-                        <article class="card checklist-card">
+                        <div class="action-stack work-session-actions">
 
-                            <h2>
-                                안전 체크
-                            </h2>
-
-                            <div class="check-item">
-                                ✓ 수분을 가까이 두고 작업하기
-                            </div>
-
-                            <div class="check-item">
-                                ✓ 몸 상태 이상 시 즉시 휴식하기
-                            </div>
-
-                            <div class="check-item">
-                                ✓ 알림이 오면 권장 휴식 확인하기
-                            </div>
-
-                        </article>
-
-
-                        <div class="action-stack">
-
-                            <button class="btn btn-rest" type="button" onclick="startRest()">
-                                휴식 시작
+                            <button class="btn work-rest-gradient-button" type="button" onclick="startRest()">
+                                <span class="work-action-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="8"></circle>
+                                        <path d="M12 7v5l3 2"></path>
+                                    </svg>
+                                </span>
+                                <span>휴식 시작</span>
                             </button>
 
 
-                            <button class="btn btn-danger-soft" type="button" onclick="endWork()">
-                                작업 종료
+                            <button class="btn work-end-button" type="button" onclick="endWork()">
+                                <span class="work-action-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <rect x="7" y="7" width="10" height="10" rx="2"></rect>
+                                    </svg>
+                                </span>
+                                <span>작업 종료</span>
                             </button>
 
                         </div>
@@ -831,9 +1215,9 @@
 
                 <section id="screen-rest-progress" class="screen content-screen">
 
-                    <div class="content-wrap">
+                    <div class="content-wrap rest-progress-wrap">
 
-                        <div class="section-heading compact">
+                        <div class="section-heading compact rest-progress-heading">
 
                             <p class="eyebrow">
                                 REST SESSION
@@ -853,6 +1237,7 @@
 
                         <article class="card progress-card rest-progress-card">
 
+                            <!-- 기존 원형 타이머 / 그린-블루 진행 링 스타일 유지 -->
                             <div id="restRing" class="progress-ring rest-ring">
 
                                 <svg class="ring-ekg" viewBox="0 0 64 18" aria-hidden="true">
@@ -874,18 +1259,57 @@
                             </div>
 
 
-                            <div class="rest-checks">
+                            <div class="rest-checks rest-check-list" aria-label="휴식 중 안전 체크">
 
-                                <div class="check-item">
-                                    ✓ 그늘 또는 시원한 장소
+                                <div class="rest-check-item shade">
+
+                                    <span class="rest-check-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M4 12a8 8 0 0 1 16 0H4Z"></path>
+                                            <path d="M12 12v6a2 2 0 0 0 4 0"></path>
+                                            <path d="M12 4V2"></path>
+                                        </svg>
+                                    </span>
+
+                                    <div>
+                                        <strong>그늘 또는 시원한 장소</strong>
+                                        <small>직사광선을 피하고 몸의 열을 식혀주세요.</small>
+                                    </div>
+
                                 </div>
 
-                                <div class="check-item">
-                                    ✓ 수분 섭취
+
+                                <div class="rest-check-item water">
+
+                                    <span class="rest-check-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M12 3S6 10 6 15a6 6 0 0 0 12 0c0-5-6-12-6-12Z"></path>
+                                            <path d="M9 16c.5 1.4 1.5 2 3 2"></path>
+                                        </svg>
+                                    </span>
+
+                                    <div>
+                                        <strong>수분 섭취</strong>
+                                        <small>한 번에 많이 마시기보다 조금씩 자주 섭취하세요.</small>
+                                    </div>
+
                                 </div>
 
-                                <div class="check-item">
-                                    ✓ 몸 상태 확인
+
+                                <div class="rest-check-item condition">
+
+                                    <span class="rest-check-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M14 4a2 2 0 0 0-4 0v9.1a5 5 0 1 0 4 0V4Z"></path>
+                                            <path d="M12 8v7"></path>
+                                        </svg>
+                                    </span>
+
+                                    <div>
+                                        <strong>몸 상태 확인</strong>
+                                        <small>어지럼·두통 등 이상 증상이 없는지 확인하세요.</small>
+                                    </div>
+
                                 </div>
 
                             </div>
@@ -908,7 +1332,7 @@
 
                 <section id="screen-record" class="screen content-screen">
 
-                    <div class="content-wrap record-content-wrap">
+                    <div class="content-wrap record-content-wrap record-simplified-wrap">
 
                         <div class="section-heading compact">
 
@@ -928,13 +1352,11 @@
 
 
                         <!-- 작업 / 휴식 탭 -->
-
                         <div class="segmented-control" role="tablist">
 
                             <button id="workTab" class="segment active" type="button" onclick="setRecordTab('work')">
                                 작업 기록
                             </button>
-
 
                             <button id="restTab" class="segment" type="button" onclick="setRecordTab('rest')">
                                 휴식 기록
@@ -943,33 +1365,10 @@
                         </div>
 
 
-                        <!-- 상단 통계 -->
+                        <!-- 통합 오늘 요약 -->
+                        <article class="record-safety-overview record-daily-summary">
 
-                        <div id="recordSummary" class="summary-grid"></div>
-
-                        <article class="record-pattern-card">
-                            <div class="record-pattern-heading">
-                                <div>
-                                    <span>TODAY PATTERN</span>
-                                    <h2>오늘 작업 · 휴식 패턴</h2>
-                                </div>
-
-                                <div class="record-pattern-legend">
-                                    <span><i class="work"></i>작업</span>
-                                    <span><i class="rest"></i>휴식</span>
-                                </div>
-                            </div>
-
-                            <div id="recordTimeline" class="record-timeline" aria-label="오늘 작업 및 휴식 타임라인"></div>
-                        </article>
-
-
-
-                        <!-- 오늘의 안전 요약 -->
-
-                        <article class="record-safety-overview">
-
-                            <div class="record-overview-heading">
+                            <div class="record-overview-heading record-daily-heading">
 
                                 <div>
                                     <span class="record-overview-eyebrow">
@@ -977,8 +1376,12 @@
                                     </span>
 
                                     <h2>
-                                        오늘의 안전 요약
+                                        오늘 기록 요약
                                     </h2>
+
+                                    <p>
+                                        작업·휴식과 주요 안전 지표를 한 번에 확인하세요.
+                                    </p>
                                 </div>
 
                                 <span id="recordSafetyBadge" class="record-safe-badge">
@@ -988,13 +1391,20 @@
                             </div>
 
 
-                            <div class="record-overview-grid">
+                            <!-- 가장 중요한 2개 지표 -->
+                            <div class="record-summary-hero-grid">
 
-                                <div class="record-overview-item">
+                                <div class="record-summary-hero work-total">
 
-                                    <span>
-                                        총 작업
+                                    <span class="record-summary-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <circle cx="12" cy="13" r="7"></circle>
+                                            <path d="M12 10v4l3 2"></path>
+                                            <path d="M9 3h6M12 3v3"></path>
+                                        </svg>
                                     </span>
+
+                                    <span class="record-summary-label">총 작업시간</span>
 
                                     <strong id="recordTotalWork">
                                         3시간 05분
@@ -1003,51 +1413,58 @@
                                 </div>
 
 
-                                <div class="record-overview-item">
+                                <div class="record-summary-hero core-temp">
 
-                                    <span>
-                                        총 휴식
+                                    <span class="record-summary-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M3 12h4l1.7-3.5 3.1 7.3 2.2-5 1.3 2.6H21"></path>
+                                        </svg>
                                     </span>
 
-                                    <strong id="recordTotalRest">
-                                        60분
-                                    </strong>
-
-                                </div>
-
-
-                                <div class="record-overview-item">
-
-                                    <span>
-                                        평균 체감온도
-                                    </span>
-
-                                    <strong id="recordAverageTemp">
-                                        31℃
-                                    </strong>
-
-                                </div>
-
-
-                                <div class="record-overview-item">
-
-                                    <span>
-                                        최고 추정 심부체온
+                                    <span class="record-summary-label">
+                                        최고 <b>AI 추정</b> 심부체온
                                     </span>
 
                                     <strong id="recordMaxCoreTemp">
                                         37.6℃
                                     </strong>
 
+                                    <small>실측 체온이 아닌 추정치</small>
+
                                 </div>
 
                             </div>
 
 
-                            <div class="record-safety-message">
+                            <!-- 부가 지표 -->
+                            <div class="record-summary-mini-grid">
 
-                                <span>
-                                    ✓
+                                <div class="record-summary-mini">
+                                    <span>작업 횟수</span>
+                                    <strong id="recordWorkCount">3회</strong>
+                                </div>
+
+                                <div class="record-summary-mini">
+                                    <span>총 휴식시간</span>
+                                    <strong id="recordTotalRest">60분</strong>
+                                </div>
+
+                                <div class="record-summary-mini">
+                                    <span>평균 체감온도</span>
+                                    <strong id="recordAverageTemp">31℃</strong>
+                                </div>
+
+                            </div>
+
+
+                            <!-- 기존 안전 안내 메시지 유지 -->
+                            <div class="record-safety-message record-summary-message">
+
+                                <span aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M12 3 20 6v5c0 5.2-3.5 8.2-8 10-4.5-1.8-8-4.8-8-10V6l8-3Z"></path>
+                                        <path d="m9 12 2 2 4-4"></path>
+                                    </svg>
                                 </span>
 
                                 <p>
@@ -1061,7 +1478,6 @@
 
 
                         <!-- 기록 목록 제목 -->
-
                         <div class="record-list-heading">
 
                             <h2 id="recordListTitle">
@@ -1076,7 +1492,6 @@
 
 
                         <!-- 실제 기록 -->
-
                         <div id="recordList" class="record-list"></div>
 
                     </div>
@@ -1182,11 +1597,6 @@
                             <div class="info-row">
                                 <span>연령</span>
                                 <strong id="profileAge">-</strong>
-                            </div>
-
-                            <div class="info-row">
-                                <span>신체 질환</span>
-                                <strong id="profileHealthCondition">없음</strong>
                             </div>
 
                         </article>
