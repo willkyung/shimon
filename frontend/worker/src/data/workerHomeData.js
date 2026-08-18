@@ -5,6 +5,7 @@ export const WORKER_HOME_WEATHER_FALLBACK = Object.freeze({
   humidity: 68,
   feelsLikeTemperature: 33,
   heatStatus: '위험',
+  heatLevel: 'danger',
   guidance: '기온이 높습니다. 충분한 수분 섭취와 정기적인 휴식을 권장합니다.',
 });
 

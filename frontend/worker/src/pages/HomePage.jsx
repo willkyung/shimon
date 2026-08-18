@@ -28,10 +28,11 @@ export default function HomePage({ active }) {
   const liveWeather = currentEvaluation?.weather;
 
   // 체감온도 배지는 AI 종합 위험도(riskLevel)가 아니라 체감온도 수치 자체로 판정한다.
+  // heatLevel은 배지 색상(초록/노랑/빨강)을 CSS에서 구분하는 데 쓴다.
   function heatStatusFromApparentTemp(feelsLikeTemperature) {
-    if (feelsLikeTemperature >= 33) return '위험';
-    if (feelsLikeTemperature >= 31) return '주의';
-    return '관심';
+    if (feelsLikeTemperature >= 33) return { heatStatus: '위험', heatLevel: 'danger' };
+    if (feelsLikeTemperature >= 31) return { heatStatus: '주의', heatLevel: 'caution' };
+    return { heatStatus: '관심', heatLevel: 'watch' };
   }
 
   const weather = liveWeather
@@ -39,7 +40,7 @@ export default function HomePage({ active }) {
         temperature: liveWeather.temperature,
         humidity: liveWeather.humidity,
         feelsLikeTemperature: liveWeather.feelsLikeTemperature,
-        heatStatus: heatStatusFromApparentTemp(liveWeather.feelsLikeTemperature),
+        ...heatStatusFromApparentTemp(liveWeather.feelsLikeTemperature),
         guidance: '체감온도·연속작업시간을 반영한 실시간 값입니다.',
       }
     : WORKER_HOME_WEATHER_FALLBACK;
@@ -71,7 +72,7 @@ export default function HomePage({ active }) {
               <span className="card-label">현재 체감온도</span>
               <div className="temperature-line">
                 <strong className="current-temperature">{weather.feelsLikeTemperature.toFixed(1)}°C</strong>
-                <span className="status-pill home-risk">{weather.heatStatus}</span>
+                <span className="status-pill home-risk" data-level={weather.heatLevel}>{weather.heatStatus}</span>
               </div>
               <p className="hero-description">{weather.guidance}</p>
             </div>

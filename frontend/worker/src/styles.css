@@ -5173,6 +5173,25 @@ select:focus-visible {
     font-size: 12px;
 }
 
+/* 관심(초록) / 주의(노랑) / 위험(빨강) - 체감온도 기준 배지 색상 */
+.home-risk[data-level="watch"] {
+    border-color: #b9e8d3;
+    background: #e9f8f2;
+    color: #16855b;
+}
+
+.home-risk[data-level="caution"] {
+    border-color: #ffdca8;
+    background: #fff2e6;
+    color: #c46d1c;
+}
+
+.home-risk[data-level="danger"] {
+    border-color: #ffc5c1;
+    background: #fff3f2;
+    color: #e7463d;
+}
+
 .hero-description {
     max-width: 238px;
     margin: 0 !important;
