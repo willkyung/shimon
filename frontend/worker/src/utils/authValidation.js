@@ -14,11 +14,12 @@ export function validateLoginForm({ email, password }) {
 
 export function validateSignupForm(form) {
   const errors = {};
+  const isAdmin = form.accountType === 'ADMIN';
   const age = Number(form.age);
 
   if (form.companyName.trim().length < 2) errors.companyName = '회사명을 2자 이상 입력해주세요.';
-  if (form.workArea.trim().length < 2) errors.workArea = '작업 구역을 2자 이상 입력해주세요.';
-  if (!form.workType) errors.workType = '작업 유형을 선택해주세요.';
+  if (!isAdmin && form.workArea.trim().length < 2) errors.workArea = '작업 구역을 2자 이상 입력해주세요.';
+  if (!isAdmin && !form.workType) errors.workType = '작업 유형을 선택해주세요.';
   if (form.name.trim().length < 2) errors.name = '이름을 2자 이상 입력해주세요.';
 
   if (!form.email.trim()) errors.email = '이메일을 입력해주세요.';
@@ -27,8 +28,12 @@ export function validateSignupForm(form) {
   if (form.phone.trim() && !PHONE_PATTERN.test(form.phone.trim())) {
     errors.phone = '올바른 전화번호 형식을 입력해주세요.';
   }
-  if (!form.age) errors.age = '나이를 입력해주세요.';
-  else if (!Number.isInteger(age) || age < 18 || age > 100) errors.age = '나이는 18세에서 100세 사이로 입력해주세요.';
+  if (!isAdmin && !form.age) errors.age = '나이를 입력해주세요.';
+  else if (!isAdmin && (!Number.isInteger(age) || age < 18 || age > 100)) errors.age = '나이는 18세에서 100세 사이로 입력해주세요.';
+
+  if (isAdmin && !form.adminSignupCode.trim()) {
+    errors.adminSignupCode = '관리자 가입 코드를 입력해주세요.';
+  }
 
   if (form.password.length < 8) errors.password = '비밀번호는 8자 이상이어야 합니다.';
   else if (!/[A-Za-z]/.test(form.password) || !/\d/.test(form.password)) {
@@ -60,6 +65,8 @@ export function apiFieldErrors(error) {
     COMPANY_NOT_FOUND: '등록되지 않은 회사명입니다.',
     SITE_NOT_FOUND: '해당 회사에 등록되지 않은 작업 구역입니다.',
     EMAIL_ALREADY_EXISTS: '이미 가입된 이메일입니다.',
+    INVALID_ADMIN_SIGNUP_CODE: '관리자 가입 코드가 올바르지 않습니다.',
+    ADMIN_SIGNUP_DISABLED: '현재 관리자 회원가입이 비활성화되어 있습니다.',
   };
   if (error?.field) errors[error.field] = knownMessages[error.code] || '입력값을 다시 확인해주세요.';
   for (const detail of error?.details || []) {

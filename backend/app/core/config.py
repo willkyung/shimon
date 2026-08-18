@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     )
     jwt_secret: SecretStr | None = None
     jwt_access_token_expire_minutes: int = 60
+    admin_signup_code: SecretStr | None = None
     kma_service_key: SecretStr | None = None
     cors_origins: list[str] = [
         "http://localhost:5173",

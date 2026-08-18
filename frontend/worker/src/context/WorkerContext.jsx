@@ -26,15 +26,23 @@ import {
 const WorkerContext = createContext(null);
 
 const MAIN_SCREENS = ['home', 'work-progress', 'rest-progress', 'record', 'mypage'];
-const WORKER_TOKEN_KEY = 'shimonWorkerAccessToken';
+const AUTH_TOKEN_KEY = 'shimonAccessToken';
+const LEGACY_TOKEN_KEYS = ['shimonWorkerAccessToken', 'shimonAdminAccessToken'];
 
 function readWorkerToken() {
-  return localStorage.getItem(WORKER_TOKEN_KEY) || sessionStorage.getItem(WORKER_TOKEN_KEY);
+  const keys = [AUTH_TOKEN_KEY, ...LEGACY_TOKEN_KEYS];
+  for (const key of keys) {
+    const token = localStorage.getItem(key) || sessionStorage.getItem(key);
+    if (token) return token;
+  }
+  return null;
 }
 
 function clearWorkerToken() {
-  localStorage.removeItem(WORKER_TOKEN_KEY);
-  sessionStorage.removeItem(WORKER_TOKEN_KEY);
+  [AUTH_TOKEN_KEY, ...LEGACY_TOKEN_KEYS].forEach((key) => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
 }
 
 function toWorkerViewModel(user) {
@@ -56,6 +64,25 @@ function toWorkerViewModel(user) {
     uniform: profile ? (profile.hasWorkwear ? 'O' : 'X') : '',
     gender: profile?.gender || '',
   };
+}
+
+function toAdminViewModel(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    role: 'admin',
+    company: user.companyName || user.companyCode,
+    email: user.email,
+    phone: user.phone || '',
+  };
+}
+
+function toAuthenticatedViewModel(user) {
+  return user.role === 'ADMIN' ? toAdminViewModel(user) : toWorkerViewModel(user);
+}
+
+function screenForRole(role) {
+  return role === 'ADMIN' ? 'admin-dashboard' : 'home';
 }
 
 function readSavedAdminSettings() {
@@ -122,9 +149,9 @@ export function WorkerProvider({ children }) {
     authApi.me(token)
       .then((user) => {
         if (!active) return;
-        if (user.role !== 'WORKER') throw new Error('WORKER role required');
-        setCurrentUser(toWorkerViewModel(user));
-        setScreen('home');
+        if (!['WORKER', 'ADMIN'].includes(user.role)) throw new Error('Unsupported role');
+        setCurrentUser(toAuthenticatedViewModel(user));
+        setScreen(screenForRole(user.role));
       })
       .catch(() => {
         if (!active) return;
@@ -324,18 +351,18 @@ export function WorkerProvider({ children }) {
   const login = useCallback(async ({ email, password, remember }) => {
     try {
       const result = await authApi.login({ email, password });
-      if (result.user.role !== 'WORKER') {
-        showToast('작업자 계정으로 로그인해주세요.');
+      if (!['WORKER', 'ADMIN'].includes(result.user.role)) {
+        showToast('지원하지 않는 계정 유형입니다.');
         return { ok: false, error: { code: 'FORBIDDEN' } };
       }
 
       clearWorkerToken();
       const storage = remember ? localStorage : sessionStorage;
-      storage.setItem(WORKER_TOKEN_KEY, result.accessToken);
+      storage.setItem(AUTH_TOKEN_KEY, result.accessToken);
       const user = await authApi.me(result.accessToken);
-      setCurrentUser(toWorkerViewModel(user));
-      navigate('home');
-      showToast('로그인되었습니다.');
+      setCurrentUser(toAuthenticatedViewModel(user));
+      navigate(screenForRole(user.role));
+      showToast(user.role === 'ADMIN' ? '관리자 대시보드로 이동합니다.' : '로그인되었습니다.');
       return { ok: true };
     } catch (error) {
       clearWorkerToken();

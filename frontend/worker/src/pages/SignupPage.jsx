@@ -5,6 +5,7 @@ import { apiFieldErrors, validateSignupForm } from '../utils/authValidation';
 import { WORK_TYPE_OPTIONS, workIntensityFor } from '../utils/workProfile';
 
 const initialForm = {
+  accountType: 'WORKER',
   companyName: '',
   workArea: '',
   workType: '',
@@ -15,6 +16,7 @@ const initialForm = {
   age: '',
   password: '',
   passwordConfirm: '',
+  adminSignupCode: '',
 };
 
 function LineIcon({ type }) {
@@ -58,6 +60,7 @@ export default function SignupPage({ active }) {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const isAdmin = form.accountType === 'ADMIN';
   const setValue = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
@@ -80,13 +83,14 @@ export default function SignupPage({ active }) {
         password: form.password,
         name: form.name.trim(),
         phone: form.phone.trim() || null,
-        role: 'WORKER',
-        workerProfile: {
+        role: form.accountType,
+        workerProfile: isAdmin ? null : {
           age: Number(form.age),
           workArea: form.workArea.trim(),
           workType: form.workType,
           hasWorkwear: form.hasWorkwear,
         },
+        ...(isAdmin ? { adminSignupCode: form.adminSignupCode.trim() } : {}),
       });
       if (result.ok) {
         setForm(initialForm);
@@ -105,56 +109,66 @@ export default function SignupPage({ active }) {
           <button className="back-button auth-back" type="button" onClick={() => navigate('welcome')} aria-label="뒤로 가기">←</button>
           <div className="signup-topbar-brand">
             <span className="signup-topbar-mark" aria-hidden="true"><ShieldIcon /></span>
-            <span><strong>SHIMON</strong><small>WORKER ONBOARDING</small></span>
+            <span><strong>SHIMON</strong><small>{isAdmin ? 'ADMIN ONBOARDING' : 'WORKER ONBOARDING'}</small></span>
           </div>
         </div>
 
         <div className="auth-content signup-auth-content">
           <div className="section-heading signup-heading">
             <p className="eyebrow">CREATE ACCOUNT</p>
-            <h1>안전한 작업을 위한<br />첫 설정을 시작해요</h1>
-            <p>기존 회사와 현장에 연결되는 작업자 계정을 생성합니다.</p>
+            <h1>{isAdmin ? <>현장 안전 관리를 위한<br />관리자 계정을 만들어요</> : <>안전한 작업을 위한<br />첫 설정을 시작해요</>}</h1>
+            <p>{isAdmin ? '가입 코드를 확인하고 기존 회사에 연결되는 관리자 계정을 생성합니다.' : '기존 회사와 현장에 연결되는 작업자 계정을 생성합니다.'}</p>
           </div>
 
           <form className="form-stack signup-form" onSubmit={handleSubmit}>
+            <div className="signup-role-selector" role="group" aria-label="가입 계정 유형">
+              <button className={!isAdmin ? 'is-active' : ''} type="button" onClick={() => setValue('accountType', 'WORKER')}>노동자</button>
+              <button className={isAdmin ? 'is-active' : ''} type="button" onClick={() => setValue('accountType', 'ADMIN')}>관리자</button>
+            </div>
+
             <section className="signup-section-card">
-              <SectionHeading title="소속 정보" description="회사명과 작업 구역을 입력해주세요. 사번은 가입 시 자동 생성됩니다." />
+              <SectionHeading title="소속 정보" description={isAdmin ? '등록된 회사명을 입력해주세요. 관리자 코드는 가입 시 자동 생성됩니다.' : '회사명과 작업 구역을 입력해주세요. 사번은 가입 시 자동 생성됩니다.'} />
               <Field label="회사명" icon="company" error={errors.companyName}><input value={form.companyName} onChange={(event) => setValue('companyName', event.target.value)} type="text" placeholder="회사명 입력" aria-invalid={Boolean(errors.companyName)} required /></Field>
-              <Field label="작업 구역" icon="location" error={errors.workArea}><input value={form.workArea} onChange={(event) => setValue('workArea', event.target.value)} type="text" placeholder="작업 구역 입력" aria-invalid={Boolean(errors.workArea)} required /></Field>
+              {!isAdmin && <Field label="작업 구역" icon="location" error={errors.workArea}><input value={form.workArea} onChange={(event) => setValue('workArea', event.target.value)} type="text" placeholder="작업 구역 입력" aria-invalid={Boolean(errors.workArea)} required /></Field>}
             </section>
 
             <section className="signup-section-card">
-              <SectionHeading title="기본 정보" description="작업자 식별과 안전 지원에 필요한 최소 정보입니다." gradient />
+              <SectionHeading title="기본 정보" description={isAdmin ? '관리자 계정 식별에 필요한 최소 정보입니다.' : '작업자 식별과 안전 지원에 필요한 최소 정보입니다.'} gradient />
               <Field label="이름" icon="user" error={errors.name}><input value={form.name} onChange={(event) => setValue('name', event.target.value)} type="text" aria-invalid={Boolean(errors.name)} required /></Field>
               <Field label="이메일" icon="email" error={errors.email}><input value={form.email} onChange={(event) => setValue('email', event.target.value)} type="email" autoComplete="email" aria-invalid={Boolean(errors.email)} required /></Field>
               <Field label="전화번호 (선택)" icon="phone" error={errors.phone}><input value={form.phone} onChange={(event) => setValue('phone', event.target.value)} type="tel" placeholder="010-0000-0000" autoComplete="tel" aria-invalid={Boolean(errors.phone)} /></Field>
-              <Field label="나이" icon="clock" error={errors.age}><input value={form.age} onChange={(event) => setValue('age', event.target.value)} type="number" min="18" max="100" placeholder="나이 입력" aria-invalid={Boolean(errors.age)} required /></Field>
-              <Field label="작업 유형" icon="code" error={errors.workType}>
-                <select value={form.workType} onChange={(event) => setValue('workType', event.target.value)} aria-invalid={Boolean(errors.workType)} required>
-                  <option value="">작업 유형 선택</option>
-                  {WORK_TYPE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.value} · {option.intensity}</option>
-                  ))}
-                </select>
-              </Field>
-              {form.workType && (
-                <div className="signup-derived-info" role="status">
-                  작업 강도는 <strong>{workIntensityFor(form.workType)}</strong>으로 자동 설정됩니다.
-                </div>
+              {!isAdmin && (
+                <>
+                  <Field label="나이" icon="clock" error={errors.age}><input value={form.age} onChange={(event) => setValue('age', event.target.value)} type="number" min="18" max="100" placeholder="나이 입력" aria-invalid={Boolean(errors.age)} required /></Field>
+                  <Field label="작업 유형" icon="code" error={errors.workType}>
+                    <select value={form.workType} onChange={(event) => setValue('workType', event.target.value)} aria-invalid={Boolean(errors.workType)} required>
+                      <option value="">작업 유형 선택</option>
+                      {WORK_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.value} · {option.intensity}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  {form.workType && (
+                    <div className="signup-derived-info" role="status">
+                      작업 강도는 <strong>{workIntensityFor(form.workType)}</strong>으로 자동 설정됩니다.
+                    </div>
+                  )}
+                  <label className="check-row signup-workwear-check">
+                    <input checked={form.hasWorkwear} onChange={(event) => setValue('hasWorkwear', event.target.checked)} type="checkbox" />
+                    <span>작업복을 착용합니다.</span>
+                  </label>
+                </>
               )}
-              <label className="check-row signup-workwear-check">
-                <input checked={form.hasWorkwear} onChange={(event) => setValue('hasWorkwear', event.target.checked)} type="checkbox" />
-                <span>작업복을 착용합니다.</span>
-              </label>
             </section>
 
             <section className="signup-section-card">
               <SectionHeading title="계정 정보" description="영문과 숫자를 포함한 8자 이상의 비밀번호를 설정해주세요." />
+              {isAdmin && <Field label="관리자 가입 코드" icon="lock" error={errors.adminSignupCode}><input value={form.adminSignupCode} onChange={(event) => setValue('adminSignupCode', event.target.value)} type="password" maxLength="128" autoComplete="off" placeholder="운영자에게 받은 코드 입력" aria-invalid={Boolean(errors.adminSignupCode)} required /></Field>}
               <Field label="비밀번호" icon="lock" error={errors.password}><input value={form.password} onChange={(event) => setValue('password', event.target.value)} type="password" minLength="8" maxLength="128" autoComplete="new-password" aria-invalid={Boolean(errors.password)} required /></Field>
               <Field label="비밀번호 확인" icon="lock" error={errors.passwordConfirm}><input value={form.passwordConfirm} onChange={(event) => setValue('passwordConfirm', event.target.value)} type="password" minLength="8" maxLength="128" autoComplete="new-password" aria-invalid={Boolean(errors.passwordConfirm)} required /></Field>
             </section>
 
-            <div className="signup-minimum-note"><ShieldIcon check /><span>비밀번호는 브라우저에 저장하지 않고 안전하게 서버로 전송됩니다.</span></div>
+            <div className="signup-minimum-note"><ShieldIcon check /><span>{isAdmin ? '관리자 가입 코드는 서버에서 검증되며 프론트엔드에 저장되지 않습니다.' : '비밀번호는 브라우저에 저장하지 않고 안전하게 서버로 전송됩니다.'}</span></div>
             <button className="btn btn-primary signup-submit-button" type="submit" disabled={submitting}>{submitting ? '가입 처리 중...' : '회원가입 완료'}</button>
           </form>
 

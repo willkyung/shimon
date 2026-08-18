@@ -77,7 +77,22 @@ Creates a Worker account. The server generates a company-local employee code.
 }
 ```
 
-`workerProfile` is required for `WORKER`. Public `ADMIN` signup is rejected. `companyName` and `workArea` must match an existing company and work area, case-insensitively.
+`workerProfile` is required for `WORKER`. For the hackathon MVP, `ADMIN` signup uses the same endpoint with `workerProfile: null` and an `adminSignupCode` that must match the server-only `ADMIN_SIGNUP_CODE` environment variable. If that environment variable is absent, ADMIN signup is disabled. Never expose the configured code in frontend source. `companyName` and `workArea` must match an existing company and work area, case-insensitively; ADMIN only requires an existing `companyName`.
+
+ADMIN signup example:
+
+```json
+{
+  "companyName": "SHIMON Company",
+  "email": "manager@example.com",
+  "password": "password123",
+  "name": "Site Manager",
+  "phone": "01012345678",
+  "role": "ADMIN",
+  "workerProfile": null,
+  "adminSignupCode": "server-issued-code"
+}
+```
 
 For the MVP demonstration, the backend derives the profile display value `workIntensity` from `workType`: `순찰·점검 → 낮음`, `토목 작업/건설 작업 → 보통`, and `도로 작업/중량물 운반 → 높음`. This mapping is profile presentation context only; it is not a compliance decision and is not claimed as a trained-model feature.
 

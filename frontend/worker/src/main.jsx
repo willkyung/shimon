@@ -11,3 +11,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </WorkerProvider>
   </React.StrictMode>,
 );
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // The app remains usable online when installation is unavailable.
+    });
+  });
+}

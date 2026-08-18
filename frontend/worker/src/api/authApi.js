@@ -74,6 +74,8 @@ export function authErrorMessage(error) {
     EMAIL_ALREADY_EXISTS: '이미 가입된 이메일입니다.',
     INVALID_CREDENTIALS: '이메일 또는 비밀번호를 확인해주세요.',
     EMPLOYEE_CODE_GENERATION_FAILED: '사번 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+    INVALID_ADMIN_SIGNUP_CODE: '관리자 가입 코드가 올바르지 않습니다.',
+    ADMIN_SIGNUP_DISABLED: '현재 관리자 회원가입이 비활성화되어 있습니다.',
     FORBIDDEN: '허용되지 않은 계정 유형입니다.',
     VALIDATION_ERROR: '입력값을 다시 확인해주세요.',
     NETWORK_ERROR: '백엔드 서버에 연결할 수 없습니다.',
