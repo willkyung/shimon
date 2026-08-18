@@ -8,6 +8,14 @@ const COMPLIANCE_LABELS = {
   IMMEDIATE_REST_REQUIRED: '휴식 필요',
 };
 
+// 준수 상태 글자색을 정상(초록)/예정(노랑)/임박·필요(빨강)로 구분하기 위한 단계
+const COMPLIANCE_LEVELS = {
+  NORMAL: 'normal',
+  REST_SCHEDULED: 'caution',
+  DEADLINE_IMMINENT: 'danger',
+  IMMEDIATE_REST_REQUIRED: 'danger',
+};
+
 export default function WorkProgressPage({ active }) {
   const {
     workSeconds,
@@ -21,6 +29,7 @@ export default function WorkProgressPage({ active }) {
   const weather = currentEvaluation?.weather;
   const ai = currentEvaluation?.ai;
   const complianceLabel = COMPLIANCE_LABELS[compliance?.status] || '-';
+  const complianceLevel = COMPLIANCE_LEVELS[compliance?.status] || 'normal';
 
   return (
     <section id="screen-work-progress" className={`screen content-screen ${active ? 'active' : ''}`}>
@@ -46,7 +55,7 @@ export default function WorkProgressPage({ active }) {
               <strong>{weather ? `${weather.feelsLikeTemperature.toFixed(1).replace('.0', '')}℃` : '-'}</strong>
             </div>
 
-            <div className="work-metric-card risk">
+            <div className="work-metric-card risk" data-level={complianceLevel}>
               <span className="work-metric-icon" aria-hidden="true"><ShieldIcon /></span>
               <span className="work-metric-label">준수 상태</span>
               <strong className="risk-text">{complianceLabel}</strong>

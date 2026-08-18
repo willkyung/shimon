@@ -7974,6 +7974,19 @@ select:focus-visible {
     color: #e54740 !important;
 }
 
+/* 준수 상태: 정상(초록) / 휴식 예정(노랑) / 휴식 임박·필요(빨강) */
+#screen-work-progress .work-metric-card.risk[data-level="normal"] strong {
+    color: #25865f !important;
+}
+
+#screen-work-progress .work-metric-card.risk[data-level="caution"] strong {
+    color: #c46d1c !important;
+}
+
+#screen-work-progress .work-metric-card.risk[data-level="danger"] strong {
+    color: #e54740 !important;
+}
+
 #screen-work-progress .work-metric-card.core-temp small {
     margin-top: 4px;
     padding: 3px 6px;
