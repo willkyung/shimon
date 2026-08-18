@@ -36,6 +36,7 @@ class RestRecord(Base):
             "work_session_id",
             unique=True,
             postgresql_where=text("ended_at IS NULL"),
+            sqlite_where=text("ended_at IS NULL"),
         ),
         Index(
             "ix_rest_records_work_session_started_at",

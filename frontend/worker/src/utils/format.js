@@ -37,20 +37,8 @@ export function formatMinutesForAdmin(minutes) {
   return `${value}분`;
 }
 
-export function totalRecordMinutes(records) {
-  return records.reduce((sum, item) => sum + (parseInt(item.duration, 10) || 0), 0);
-}
-
 export function getEstimatedCoreTempLevel(value) {
   if (Number(value) >= 38.0) return { level: 'high', label: '고위험' };
   if (Number(value) >= 37.5) return { level: 'caution', label: '주의' };
-  return { level: 'normal', label: '정상' };
-}
-
-export function getRecordRisk(apparentTemp, coreTemp) {
-  const temp = Number(apparentTemp);
-  const core = Number(coreTemp);
-  if (core >= 38.0 || temp >= 35) return { level: 'warning', label: '경고' };
-  if (core >= 37.5 || temp >= 33) return { level: 'caution', label: '주의' };
   return { level: 'normal', label: '정상' };
 }

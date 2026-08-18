@@ -10,16 +10,13 @@ import {
 
 import {
   DEFAULT_ADMIN_SETTINGS,
-  initialRestRecords,
-  initialWorkRecords,
 } from '../data/demoData';
 
 import { authApi, authErrorMessage } from '../api/authApi';
+import { workApi } from '../api/workApi';
 
 import {
   formatDuration,
-  formatMinutesForAdmin,
-  formatTime,
   getEstimatedCoreTempLevel,
 } from '../utils/format';
 
@@ -47,6 +44,7 @@ function clearWorkerToken() {
 
 function toWorkerViewModel(user) {
   const profile = user.workerProfile;
+  const assignedSite = profile?.assignedSite;
   return {
     id: user.id,
     name: user.name,
@@ -56,8 +54,11 @@ function toWorkerViewModel(user) {
     email: user.email,
     phone: user.phone || '',
     age: profile?.age ?? null,
-    workplace: profile?.assignedSite?.name || '',
-    assignedSiteId: profile?.assignedSite?.id || null,
+    workplace: assignedSite?.name || '',
+    assignedSiteId: assignedSite?.id || null,
+    siteAddress: assignedSite?.address || '',
+    siteDistrict: assignedSite?.district || '',
+    siteLegalDong: assignedSite?.legalDong || '',
     hasCoolingDevice: profile?.hasCoolingDevice ?? false,
     jobType: profile?.workType || '',
     workIntensity: profile?.workIntensity || '',
@@ -81,8 +82,9 @@ function toAuthenticatedViewModel(user) {
   return user.role === 'ADMIN' ? toAdminViewModel(user) : toWorkerViewModel(user);
 }
 
-function screenForRole(role) {
-  return role === 'ADMIN' ? 'admin-dashboard' : 'home';
+function elapsedSecondsFrom(startedAt) {
+  if (!startedAt) return 0;
+  return Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
 }
 
 function readSavedAdminSettings() {
@@ -117,19 +119,24 @@ export function WorkerProvider({ children }) {
 
   const [workSeconds, setWorkSeconds] = useState(0);
   const [workState, setWorkState] = useState('idle');
-  const [workSessionStartedAt, setWorkSessionStartedAt] = useState(null);
-  const workLimitAlertShownRef = useRef(false);
-
-  const workTargetSeconds = Math.max(60, Number(adminSettings.maxWorkMinutes || 120) * 60);
-  const restTargetSeconds = Math.max(60, Number(adminSettings.restMinutes || 20) * 60);
+  const [continuousWorkStartedAt, setContinuousWorkStartedAt] = useState(null);
+  const [activeWorkSessionId, setActiveWorkSessionId] = useState(null);
+  const [currentEvaluation, setCurrentEvaluation] = useState(null);
+  const restAlertedSessionRef = useRef(null);
+  const [restRequiredMinutes, setRestRequiredMinutes] = useState(
+    Number(adminSettings.restMinutes || 20),
+  );
+  const restTargetSeconds = Math.max(60, restRequiredMinutes * 60);
 
   const [restSeconds, setRestSeconds] = useState(restTargetSeconds);
   const [restRunning, setRestRunning] = useState(false);
   const [restStartedAt, setRestStartedAt] = useState(null);
-  const [resumeWorkAfterRest, setResumeWorkAfterRest] = useState(false);
+  const [activeRestId, setActiveRestId] = useState(null);
 
-  const [workRecords, setWorkRecords] = useState(initialWorkRecords);
-  const [restRecords, setRestRecords] = useState(initialRestRecords);
+  const [workRecords, setWorkRecords] = useState([]);
+  const [restRecords, setRestRecords] = useState([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
+  const [recordsError, setRecordsError] = useState('');
   const [recordTab, setRecordTab] = useState('work');
 
   const showToast = useCallback((message) => {
@@ -147,11 +154,53 @@ export function WorkerProvider({ children }) {
 
     let active = true;
     authApi.me(token)
-      .then((user) => {
+      .then(async (user) => {
         if (!active) return;
         if (!['WORKER', 'ADMIN'].includes(user.role)) throw new Error('Unsupported role');
         setCurrentUser(toAuthenticatedViewModel(user));
-        setScreen(screenForRole(user.role));
+        if (user.role === 'ADMIN') {
+          setScreen('admin-dashboard');
+          return;
+        }
+
+        const [session, workHistory, restHistory] = await Promise.all([
+          workApi.current(token),
+          workApi.history(token),
+          workApi.restHistory(token),
+        ]);
+        setWorkRecords(workHistory);
+        setRestRecords(restHistory);
+        if (!active || !session) {
+          setScreen('home');
+          return;
+        }
+        setActiveWorkSessionId(session.id);
+        const continuousStartedAt = session.continuousWorkStartedAt || session.startedAt;
+        setContinuousWorkStartedAt(new Date(continuousStartedAt));
+        setWorkSeconds(elapsedSecondsFrom(continuousStartedAt));
+        setCurrentEvaluation(session.latestEvaluation);
+        if (session.activeRest) {
+          setWorkState('paused');
+          setActiveRestId(session.activeRest.restId);
+          setRestStartedAt(new Date(session.activeRest.startedAt));
+          setRestRunning(true);
+          const target = Math.max(60, session.activeRest.requiredRestMinutes * 60);
+          setRestRequiredMinutes(session.activeRest.requiredRestMinutes);
+          setRestSeconds(Math.max(0, target - elapsedSecondsFrom(session.activeRest.startedAt)));
+          setScreen('rest-progress');
+          return;
+        }
+
+        setWorkState('running');
+        const evaluation = await workApi.evaluate(token, session.id);
+        if (!active) return;
+        setCurrentEvaluation(evaluation);
+        if (evaluation.compliance.isRestRequired) {
+          restAlertedSessionRef.current = session.id;
+          setScreen('rest-alert');
+        } else {
+          setScreen('work-progress');
+        }
       })
       .catch(() => {
         if (!active) return;
@@ -172,6 +221,70 @@ export function WorkerProvider({ children }) {
     if (MAIN_SCREENS.includes(nextScreen)) setLastMainScreen(nextScreen);
   }, []);
 
+  const refreshRecords = useCallback(async ({ silent = false } = {}) => {
+    const token = readWorkerToken();
+    if (!token) return { ok: false };
+    if (!silent) setRecordsLoading(true);
+    setRecordsError('');
+    try {
+      const [workHistory, restHistory] = await Promise.all([
+        workApi.history(token),
+        workApi.restHistory(token),
+      ]);
+      setWorkRecords(workHistory);
+      setRestRecords(restHistory);
+      return { ok: true };
+    } catch (error) {
+      const message = authErrorMessage(error);
+      setRecordsError(message);
+      if (!silent) showToast(message);
+      return { ok: false, error };
+    } finally {
+      if (!silent) setRecordsLoading(false);
+    }
+  }, [showToast]);
+
+  const applyEvaluation = useCallback((evaluation, sessionId, { interrupt = true } = {}) => {
+    setCurrentEvaluation(evaluation);
+    if (
+      interrupt &&
+      evaluation?.compliance?.isRestRequired &&
+      restAlertedSessionRef.current !== sessionId
+    ) {
+      restAlertedSessionRef.current = sessionId;
+      navigate('rest-alert');
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    if (screen === 'record' && currentUser?.role === 'worker') {
+      refreshRecords();
+      const intervalId = window.setInterval(
+        () => refreshRecords({ silent: true }),
+        60_000,
+      );
+      return () => window.clearInterval(intervalId);
+    }
+    return undefined;
+  }, [screen, currentUser?.role, refreshRecords]);
+
+  useEffect(() => {
+    if (workState !== 'running' || !activeWorkSessionId) return undefined;
+    const token = readWorkerToken();
+    if (!token) return undefined;
+
+    const pollEvaluation = async () => {
+      try {
+        const evaluation = await workApi.evaluate(token, activeWorkSessionId);
+        applyEvaluation(evaluation, activeWorkSessionId);
+      } catch (error) {
+        showToast(authErrorMessage(error));
+      }
+    };
+    const intervalId = window.setInterval(pollEvaluation, 60_000);
+    return () => window.clearInterval(intervalId);
+  }, [workState, activeWorkSessionId, applyEvaluation, showToast]);
+
   useEffect(() => {
     const handleStorage = (event) => {
       if (event.key === 'shimonAdminSettings') {
@@ -185,37 +298,30 @@ export function WorkerProvider({ children }) {
   }, [restRunning]);
 
   useEffect(() => {
-    if (workState !== 'running') return undefined;
-    const id = window.setInterval(() => setWorkSeconds((value) => value + 1), 1000);
+    if (workState !== 'running' || !continuousWorkStartedAt) return undefined;
+    const id = window.setInterval(
+      () => setWorkSeconds(elapsedSecondsFrom(continuousWorkStartedAt)),
+      1000,
+    );
     return () => window.clearInterval(id);
-  }, [workState]);
-
-  useEffect(() => {
-    if (
-      workState === 'running' &&
-      workSeconds >= workTargetSeconds &&
-      !workLimitAlertShownRef.current
-    ) {
-      workLimitAlertShownRef.current = true;
-      showToast(`연속 작업 ${formatMinutesForAdmin(adminSettings.maxWorkMinutes)}이 되었습니다. 휴식을 권장합니다.`);
-    }
-  }, [workSeconds, workState, workTargetSeconds, adminSettings.maxWorkMinutes, showToast]);
+  }, [workState, continuousWorkStartedAt]);
 
   useEffect(() => {
     if (!restRunning) return undefined;
     const id = window.setInterval(() => {
-      setRestSeconds((current) => {
-        if (current <= 1) {
-          window.clearInterval(id);
-          setRestRunning(false);
-          showToast('권장 휴식 시간이 완료되었습니다.');
-          return 0;
-        }
-        return current - 1;
-      });
+      const remaining = Math.max(
+        0,
+        restTargetSeconds - elapsedSecondsFrom(restStartedAt),
+      );
+      setRestSeconds(remaining);
+      if (remaining === 0) {
+        window.clearInterval(id);
+        setRestRunning(false);
+        showToast('권장 휴식 시간이 완료되었습니다.');
+      }
     }, 1000);
     return () => window.clearInterval(id);
-  }, [restRunning, showToast]);
+  }, [restRunning, restStartedAt, restTargetSeconds, showToast]);
 
   useEffect(() => {
     if (screen === 'rest-progress') {
@@ -230,115 +336,141 @@ export function WorkerProvider({ children }) {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
   }, []);
 
-  const startWork = useCallback(() => {
-    if (workState === 'idle') {
-      setWorkSeconds(0);
-      setWorkSessionStartedAt(new Date());
-      workLimitAlertShownRef.current = false;
+  const startWork = useCallback(async () => {
+    if (workState === 'running' && activeWorkSessionId) {
+      navigate('work-progress');
+      return { ok: true };
     }
-    setWorkState('running');
-    navigate('work-progress');
-    showToast(workState === 'idle' ? '작업 기록을 시작했습니다.' : '작업을 재개했습니다.');
-  }, [navigate, showToast, workState]);
+    if (workState === 'paused' && activeRestId) {
+      navigate('rest-progress');
+      showToast('진행 중인 휴식을 먼저 종료해 주세요.');
+      return { ok: false };
+    }
+    const token = readWorkerToken();
+    if (!token || !currentUser?.assignedSiteId) {
+      showToast('로그인 또는 배정 현장을 확인해주세요.');
+      return { ok: false };
+    }
+    try {
+      const session = await workApi.start(token, {
+        siteId: currentUser.assignedSiteId,
+        workType: currentUser.jobType,
+        workIntensity: currentUser.workIntensity,
+        clothingLevel: currentUser.uniform === 'O' ? 'WORKWEAR' : 'STANDARD',
+        environment: 'OUTDOOR',
+      });
+      setActiveWorkSessionId(session.id);
+      const continuousStartedAt = session.continuousWorkStartedAt || session.startedAt;
+      setContinuousWorkStartedAt(new Date(continuousStartedAt));
+      setWorkSeconds(elapsedSecondsFrom(continuousStartedAt));
+      setWorkState('running');
+      setCurrentEvaluation(session.latestEvaluation);
+      restAlertedSessionRef.current = null;
+      await refreshRecords({ silent: true });
+      navigate('work-progress');
+      showToast('작업 기록을 시작했습니다.');
+      return { ok: true };
+    } catch (error) {
+      showToast(authErrorMessage(error));
+      return { ok: false, error };
+    }
+  }, [workState, activeWorkSessionId, activeRestId, currentUser, navigate, refreshRecords, showToast]);
 
   const resetWorkSession = useCallback(() => {
     setWorkSeconds(0);
     setWorkState('idle');
-    setWorkSessionStartedAt(null);
-    workLimitAlertShownRef.current = false;
-    setResumeWorkAfterRest(false);
+    setActiveWorkSessionId(null);
+    setContinuousWorkStartedAt(null);
+    setCurrentEvaluation(null);
+    restAlertedSessionRef.current = null;
   }, []);
 
-  const endWork = useCallback(() => {
-    if (workState === 'idle' || !workSessionStartedAt) {
+  const endWork = useCallback(async () => {
+    if (workState === 'idle' || !activeWorkSessionId) {
       navigate('home');
-      return;
+      return { ok: true };
     }
-
-    const now = new Date();
-    const durationMinutes = Math.max(1, Math.round(workSeconds / 60));
-    setWorkRecords((records) => [
-      {
-        time: `${formatTime(workSessionStartedAt)} - ${formatTime(now)}`,
-        duration: `${durationMinutes}분`,
-        temp: 33,
-        coreTemp: estimatedCoreTemp,
-      },
-      ...records,
-    ]);
-    resetWorkSession();
-    navigate('home');
-    showToast('작업 기록이 저장되었습니다.');
+    const token = readWorkerToken();
+    try {
+      await workApi.end(token, activeWorkSessionId);
+      await refreshRecords({ silent: true });
+      resetWorkSession();
+      navigate('home');
+      showToast('작업 기록이 저장되었습니다.');
+      return { ok: true };
+    } catch (error) {
+      showToast(authErrorMessage(error));
+      return { ok: false, error };
+    }
   }, [
     workState,
-    workSessionStartedAt,
-    workSeconds,
-    estimatedCoreTemp,
+    activeWorkSessionId,
     resetWorkSession,
     navigate,
+    refreshRecords,
     showToast,
   ]);
 
-  const startRest = useCallback(() => {
-    const shouldResume = workState === 'running';
-    if (shouldResume) setWorkState('paused');
-    setResumeWorkAfterRest(shouldResume);
-    setRestSeconds(restTargetSeconds);
-    setRestStartedAt(new Date());
-    setRestRunning(true);
-    navigate('rest-progress');
-  }, [workState, restTargetSeconds, navigate]);
+  const startRest = useCallback(async () => {
+    if (!activeWorkSessionId) {
+      showToast('먼저 작업을 시작해주세요.');
+      return { ok: false };
+    }
+    const token = readWorkerToken();
+    try {
+      const rest = await workApi.startRest(token, activeWorkSessionId);
+      setWorkState('paused');
+      setActiveRestId(rest.restId);
+      setRestRequiredMinutes(rest.requiredRestMinutes);
+      setRestSeconds(Math.max(60, rest.requiredRestMinutes * 60));
+      setRestStartedAt(new Date(rest.startedAt));
+      setRestRunning(true);
+      await refreshRecords({ silent: true });
+      navigate('rest-progress');
+      return { ok: true };
+    } catch (error) {
+      showToast(authErrorMessage(error));
+      return { ok: false, error };
+    }
+  }, [activeWorkSessionId, navigate, refreshRecords, showToast]);
 
-  const endRest = useCallback(() => {
-    const now = new Date();
-    const elapsedSeconds = restTargetSeconds - restSeconds;
-    const actualSeconds = elapsedSeconds > 0 ? elapsedSeconds : restTargetSeconds;
-    const start = restStartedAt || new Date(now.getTime() - actualSeconds * 1000);
-    const durationMinutes = Math.max(1, Math.round(actualSeconds / 60));
-
-    setRestRecords((records) => [
-      {
-        time: `${formatTime(start)} - ${formatTime(now)}`,
-        duration: `${durationMinutes}분`,
-        temp: 34,
-        coreTemp: estimatedCoreTemp,
-      },
-      ...records,
-    ]);
-
-    const shouldResume = resumeWorkAfterRest && workState === 'paused';
-
-    setRestRunning(false);
-    setRestSeconds(restTargetSeconds);
-    setRestStartedAt(null);
-    setResumeWorkAfterRest(false);
-
-    if (shouldResume) {
+  const endRest = useCallback(async () => {
+    if (!activeRestId) return { ok: false };
+    const token = readWorkerToken();
+    try {
+      const result = await workApi.endRest(token, activeRestId);
+      setRestRunning(false);
+      setRestSeconds(restTargetSeconds);
+      setRestStartedAt(null);
+      setActiveRestId(null);
       setWorkState('running');
+      setActiveWorkSessionId(result.workSessionId);
+      setContinuousWorkStartedAt(new Date(result.continuousWorkStartedAt));
+      setWorkSeconds(0);
+      applyEvaluation(result.evaluation, activeWorkSessionId, { interrupt: false });
+      restAlertedSessionRef.current = null;
+      await refreshRecords({ silent: true });
       navigate('work-progress');
       showToast('휴식이 저장되고 작업이 재개되었습니다.');
-    } else {
-      navigate('home');
-      showToast('휴식 기록이 저장되었습니다.');
+      return { ok: true };
+    } catch (error) {
+      showToast(authErrorMessage(error));
+      return { ok: false, error };
     }
   }, [
+    activeRestId,
+    activeWorkSessionId,
     restTargetSeconds,
-    restSeconds,
-    restStartedAt,
-    estimatedCoreTemp,
-    resumeWorkAfterRest,
-    workState,
+    applyEvaluation,
     navigate,
+    refreshRecords,
     showToast,
   ]);
 
   const snoozeRestAlert = useCallback(() => {
-    navigate('home');
-    showToast('5분 후 다시 휴식 알림을 표시합니다.');
-    window.setTimeout(() => {
-      if (notificationEnabled) showToast('휴식 권장 알림이 도착했습니다.');
-    }, 5000);
-  }, [navigate, showToast, notificationEnabled]);
+    navigate('work-progress');
+    showToast('휴식 필요 상태가 유지됩니다.');
+  }, [navigate, showToast]);
 
   const toggleNotifications = useCallback(() => {
     setNotificationEnabled((value) => {
@@ -361,7 +493,49 @@ export function WorkerProvider({ children }) {
       storage.setItem(AUTH_TOKEN_KEY, result.accessToken);
       const user = await authApi.me(result.accessToken);
       setCurrentUser(toAuthenticatedViewModel(user));
-      navigate(screenForRole(user.role));
+      if (user.role === 'WORKER') {
+        const [session, workHistory, restHistory] = await Promise.all([
+          workApi.current(result.accessToken),
+          workApi.history(result.accessToken),
+          workApi.restHistory(result.accessToken),
+        ]);
+        setWorkRecords(workHistory);
+        setRestRecords(restHistory);
+        if (session) {
+          setActiveWorkSessionId(session.id);
+          const continuousStartedAt = session.continuousWorkStartedAt || session.startedAt;
+          setContinuousWorkStartedAt(new Date(continuousStartedAt));
+          setWorkSeconds(elapsedSecondsFrom(continuousStartedAt));
+          setCurrentEvaluation(session.latestEvaluation);
+          if (session.activeRest) {
+            setWorkState('paused');
+            setActiveRestId(session.activeRest.restId);
+            setRestRequiredMinutes(session.activeRest.requiredRestMinutes);
+            setRestStartedAt(new Date(session.activeRest.startedAt));
+            setRestSeconds(Math.max(
+              0,
+              session.activeRest.requiredRestMinutes * 60
+                - elapsedSecondsFrom(session.activeRest.startedAt),
+            ));
+            setRestRunning(true);
+            navigate('rest-progress');
+          } else {
+            setWorkState('running');
+            const evaluation = await workApi.evaluate(result.accessToken, session.id);
+            setCurrentEvaluation(evaluation);
+            if (evaluation.compliance.isRestRequired) {
+              restAlertedSessionRef.current = session.id;
+              navigate('rest-alert');
+            } else {
+              navigate('work-progress');
+            }
+          }
+        } else {
+          navigate('home');
+        }
+      } else {
+        navigate('admin-dashboard');
+      }
       showToast(user.role === 'ADMIN' ? '관리자 대시보드로 이동합니다.' : '로그인되었습니다.');
       return { ok: true };
     } catch (error) {
@@ -415,10 +589,15 @@ export function WorkerProvider({ children }) {
     setCurrentUser(null);
     setWorkState('idle');
     setWorkSeconds(0);
-    setWorkSessionStartedAt(null);
+    setContinuousWorkStartedAt(null);
+    setActiveWorkSessionId(null);
+    setCurrentEvaluation(null);
     setRestRunning(false);
+    setActiveRestId(null);
     setRestSeconds(restTargetSeconds);
-    setResumeWorkAfterRest(false);
+    setWorkRecords([]);
+    setRestRecords([]);
+    setRecordsError('');
     navigate('welcome');
     showToast('로그아웃되었습니다.');
   }, [navigate, restTargetSeconds, showToast]);
@@ -443,16 +622,21 @@ export function WorkerProvider({ children }) {
     setEstimatedCoreTemp,
     coreTempState,
     adminSettings,
-    workTargetSeconds,
+    activeWorkSessionId,
+    currentEvaluation,
+    activeRestId,
     restTargetSeconds,
     workSeconds,
     workState,
-    workSessionStartedAt,
-    workProgress: Math.min((workSeconds / workTargetSeconds) * 100, 100),
+    continuousWorkStartedAt,
+    workProgress: currentEvaluation?.compliance?.isRestRequired ? 100 : 0,
     restSeconds,
     restProgress: Math.max(0, Math.min((restSeconds / restTargetSeconds) * 100, 100)),
     workRecords,
     restRecords,
+    recordsLoading,
+    recordsError,
+    refreshRecords,
     recordTab,
     setRecordTab,
     startWork,
@@ -478,14 +662,19 @@ export function WorkerProvider({ children }) {
     estimatedCoreTemp,
     coreTempState,
     adminSettings,
-    workTargetSeconds,
+    activeWorkSessionId,
+    currentEvaluation,
+    activeRestId,
     restTargetSeconds,
     workSeconds,
     workState,
-    workSessionStartedAt,
+    continuousWorkStartedAt,
     restSeconds,
     workRecords,
     restRecords,
+    recordsLoading,
+    recordsError,
+    refreshRecords,
     recordTab,
     startWork,
     endWork,

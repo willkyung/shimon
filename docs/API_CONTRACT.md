@@ -254,7 +254,7 @@ The precise embedding of `evaluation` is **TODO / NOT FROZEN**; it may use the e
 
 ### `GET /api/v1/me/work-session/current`
 
-Returns the current active WorkSession or `data: null`. It does not run evaluation.
+Returns the current active WorkSession. While resting, it returns the just-completed source WorkSession with `workerState: RESTING` and `activeRest`; otherwise it returns `data: null` when neither work nor rest is active. It does not run evaluation.
 
 ```json
 {
@@ -264,8 +264,36 @@ Returns the current active WorkSession or `data: null`. It does not run evaluati
     "siteId": "site-1",
     "status": "IN_PROGRESS",
     "startedAt": "2026-08-18T14:35:00+09:00",
+    "continuousWorkStartedAt": "2026-08-18T14:35:00+09:00",
     "continuousWorkMinutes": 95
   }
+}
+```
+
+### `GET /api/v1/me/work-sessions`
+
+Returns the authenticated worker's real WorkSession history in reverse chronological order. Active sessions are included so the record screen changes immediately after work starts. `durationMinutes` excludes recorded rest time. The embedded evaluation is the latest stored evaluation and this GET does not create a new one.
+
+```json
+{
+  "success": true,
+  "data": [{
+    "id": "work-101",
+    "status": "COMPLETED",
+    "startedAt": "2026-08-18T14:35:00+09:00",
+    "endedAt": "2026-08-18T18:00:00+09:00",
+    "durationMinutes": 185,
+    "workType": "MATERIAL_TRANSPORT",
+    "workIntensity": "HIGH",
+    "evaluation": {
+      "evaluatedAt": "2026-08-18T17:59:00+09:00",
+      "feelsLikeTemperature": 36.7,
+      "complianceStatus": "IMMEDIATE_REST_REQUIRED",
+      "isRestRequired": true,
+      "aiRiskLevel": null,
+      "predictedCoreTemperature": null
+    }
+  }]
 }
 ```
 
@@ -335,9 +363,13 @@ The Evaluation Orchestrator loads the WorkSession, worker profile, latest weathe
 
 ## Rest records
 
+### `GET /api/v1/me/rest-records`
+
+Returns the authenticated worker's real RestRecord history in reverse chronological order. Active rests are included. The evaluation snapshot is the latest stored evaluation at or before the rest started.
+
 ### `POST /api/v1/work-sessions/{id}/rests/start`
 
-Starts a rest. The backend determines `restType` from the latest stored evaluation:
+Ends the current WorkSession and starts a rest at the same server timestamp. Each continuous work period is therefore persisted as one completed WorkSession. The backend determines `restType` from the latest stored evaluation:
 
 ```text
 immediate legal rest required -> LEGAL_REQUIRED
@@ -360,14 +392,16 @@ otherwise                     -> SELF_INITIATED
 
 ### `POST /api/v1/rests/{id}/end`
 
-Ends the active rest, derives `WORKING`, and immediately triggers a new evaluation.
+Ends the active rest, automatically creates the next WorkSession, derives `WORKING`, and immediately evaluates the new session.
 
 ```json
 {
   "success": true,
   "data": {
     "restId": "rest-501",
+    "workSessionId": "work-102",
     "endedAt": "2026-08-18T16:32:00+09:00",
+    "continuousWorkStartedAt": "2026-08-18T16:32:00+09:00",
     "durationMinutes": 20,
     "workerState": "WORKING",
     "evaluation": {}

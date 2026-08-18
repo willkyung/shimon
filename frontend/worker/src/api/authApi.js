@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api/v1';
 
 export class ApiError extends Error {
   constructor(code, message, status, metadata = {}) {
@@ -12,7 +12,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, { token, ...options } = {}) {
+export async function apiRequest(path, { token, ...options } = {}) {
   let response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
@@ -44,22 +44,22 @@ async function request(path, { token, ...options } = {}) {
 
 export const authApi = {
   signup(payload) {
-    return request('/auth/signup', {
+    return apiRequest('/auth/signup', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
   login(payload) {
-    return request('/auth/login', {
+    return apiRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
   me(token) {
-    return request('/me', { token });
+    return apiRequest('/me', { token });
   },
   updateMe(token, payload) {
-    return request('/me', {
+    return apiRequest('/me', {
       method: 'PATCH',
       token,
       body: JSON.stringify(payload),
@@ -76,6 +76,10 @@ export function authErrorMessage(error) {
     EMPLOYEE_CODE_GENERATION_FAILED: '사번 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
     INVALID_ADMIN_SIGNUP_CODE: '관리자 가입 코드가 올바르지 않습니다.',
     ADMIN_SIGNUP_DISABLED: '현재 관리자 회원가입이 비활성화되어 있습니다.',
+    ACTIVE_WORK_SESSION_EXISTS: '이미 진행 중인 작업이 있습니다. 화면을 새로고침해주세요.',
+    ACTIVE_WORK_SESSION_NOT_FOUND: '진행 중인 작업을 찾을 수 없습니다.',
+    ACTIVE_REST_ALREADY_EXISTS: '이미 휴식이 진행 중입니다.',
+    ACTIVE_REST_NOT_FOUND: '진행 중인 휴식을 찾을 수 없습니다.',
     FORBIDDEN: '허용되지 않은 계정 유형입니다.',
     VALIDATION_ERROR: '입력값을 다시 확인해주세요.',
     NETWORK_ERROR: '백엔드 서버에 연결할 수 없습니다.',
