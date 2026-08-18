@@ -1,0 +1,2141 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#213162" />
+
+    <title>SHIMON | 스마트 휴식 관리</title>
+
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="config.js" defer></script>
+    <script src="script.js" defer></script>
+</head>
+
+<body>
+
+    <!-- ======================================
+       노동자 모바일 앱
+  ======================================= -->
+
+    <div id="workerApp" class="worker-app">
+
+        <div class="phone-shell">
+
+            <!-- 로그인 후 상단 헤더 -->
+            <header id="workerHeader" class="worker-header hidden">
+
+                <button class="brand-button" type="button" onclick="showWorkerScreen('home')" aria-label="홈으로 이동">
+                    <img src="shimon-logo.jpg" alt="SHIMON 로고" />
+                    <span>SHIMON</span>
+                </button>
+
+                <button class="icon-button notification-button" type="button" onclick="openNotifications()"
+                    aria-label="알림 열기">
+                    <span aria-hidden="true">🔔</span>
+                    <span class="notification-dot"></span>
+                </button>
+
+            </header>
+
+
+            <main class="worker-main">
+
+
+                <!-- ======================================
+             시작 화면
+        ======================================= -->
+
+                <section id="screen-welcome" class="screen active splash-screen">
+
+                    <div class="splash-content">
+
+                        <img class="splash-logo" src="shimon-logo.jpg" alt="SHIMON" />
+
+                        <p class="splash-eyebrow">
+                            AI 기반 폭염 옥외 노동자
+                        </p>
+
+                        <h1>
+                            스마트 휴식 관리 서비스
+                        </h1>
+
+                        <p class="intro-copy">
+                            체감온도와 작업 상태를 바탕으로
+                            적절한 휴식을 안내합니다.
+                        </p>
+
+                    </div>
+
+
+                    <div class="splash-actions">
+
+                        <button class="btn btn-splash" type="button" onclick="showWorkerScreen('signup')">
+                            회원가입
+                        </button>
+
+                        <p class="splash-switch">
+                            이미 계정이 있으신가요?
+
+                            <button class="splash-link" type="button" onclick="showWorkerScreen('login')">
+                                로그인
+                            </button>
+                        </p>
+
+                    </div>
+
+                </section>
+
+
+                <!-- ======================================
+             로그인
+        ======================================= -->
+
+                <section id="screen-login" class="screen auth-screen">
+
+                    <div class="auth-card">
+
+                        <div class="auth-topbar">
+
+                            <button class="back-button auth-back" type="button" onclick="showWorkerScreen('welcome')"
+                                aria-label="뒤로 가기">
+                                ←
+                            </button>
+
+                        </div>
+
+
+                        <div class="auth-content">
+
+                            <div class="section-heading">
+
+                                <p class="eyebrow">
+                                    WELCOME BACK
+                                </p>
+
+                                <h1>
+                                    로그인
+                                </h1>
+
+                                <p>
+                                    이름과 비밀번호를 입력해주세요.
+                                </p>
+
+                            </div>
+
+
+                            <form id="loginForm" class="form-stack" onsubmit="handleLogin(event)">
+
+                                <label class="field">
+
+                                    <span>
+                                        이름
+                                    </span>
+
+                                    <input id="loginName" type="text" placeholder="이름 입력" autocomplete="username"
+                                        required />
+
+                                </label>
+
+
+                                <label class="field">
+
+                                    <span>
+                                        비밀번호
+                                    </span>
+
+                                    <input id="loginPassword" type="password" placeholder="비밀번호 입력"
+                                        autocomplete="current-password" required />
+
+                                </label>
+
+
+                                <label class="check-row">
+
+                                    <input id="rememberMe" type="checkbox" />
+
+                                    <span>
+                                        로그인 상태 유지
+                                    </span>
+
+                                </label>
+
+
+                                <button class="btn btn-primary" type="submit">
+                                    로그인
+                                </button>
+
+                            </form>
+
+                            <p class="auth-help-links">
+                                <button class="text-link" type="button" onclick="openAccountRecovery('account')">
+                                    계정 찾기
+                                </button>
+                                <span aria-hidden="true">·</span>
+                                <button class="text-link" type="button" onclick="openAccountRecovery('password')">
+                                    비밀번호 찾기
+                                </button>
+                            </p>
+
+
+                            <div class="demo-box">
+
+                                <strong>
+                                    프로토타입 테스트 계정
+                                </strong>
+
+                                <span>
+                                    노동자: 김철수 / 1234
+                                </span>
+
+                                <span>
+                                    관리자: 관리자 / 1234
+                                </span>
+
+                            </div>
+
+
+                            <p class="switch-copy">
+
+                                계정이 없으신가요?
+
+                                <button class="text-link" type="button" onclick="showWorkerScreen('signup')">
+                                    회원가입
+                                </button>
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- ======================================
+             계정 / 비밀번호 복구
+        ======================================= -->
+
+                <section id="screen-recovery" class="screen auth-screen long-screen">
+                    <div class="auth-card">
+                        <div class="auth-topbar">
+                            <button class="back-button auth-back" type="button" onclick="showWorkerScreen('login')"
+                                aria-label="로그인으로 돌아가기">←</button>
+                        </div>
+
+                        <div class="auth-content">
+                            <div class="section-heading">
+                                <p class="eyebrow">ACCOUNT RECOVERY</p>
+                                <h1>계정 복구</h1>
+                                <p>가입한 이메일을 확인하거나 비밀번호를 새로 설정할 수 있어요.</p>
+                            </div>
+
+                            <div id="recoveryTabs" class="recovery-tabs" role="tablist" aria-label="복구 방법">
+                                <button id="accountRecoveryTab" class="recovery-tab active" type="button" role="tab"
+                                    aria-selected="true" onclick="showRecoveryTab('account')">계정 찾기</button>
+                                <button id="passwordRecoveryTab" class="recovery-tab" type="button" role="tab"
+                                    aria-selected="false" onclick="showRecoveryTab('password')">비밀번호 찾기</button>
+                            </div>
+
+                            <div id="accountRecoveryPanel" class="recovery-panel">
+                                <form id="accountRecoveryForm" class="form-stack" onsubmit="handleAccountRecovery(event)">
+                                    <label class="field">
+                                        <span>사원코드</span>
+                                        <input id="recoveryEmployeeCode" type="text" placeholder="예: HB-W001" autocomplete="off" required />
+                                    </label>
+                                    <label class="field">
+                                        <span>이름</span>
+                                        <input id="recoveryName" type="text" placeholder="가입할 때 입력한 이름" autocomplete="name" required />
+                                    </label>
+                                    <label class="field">
+                                        <span>휴대폰 번호</span>
+                                        <input id="recoveryPhone" type="tel" placeholder="010-1234-5678" autocomplete="tel" required />
+                                    </label>
+                                    <button id="accountRecoveryButton" class="btn btn-primary" type="submit">가입 이메일 확인</button>
+                                </form>
+                                <div id="accountRecoveryResult" class="recovery-result hidden" aria-live="polite"></div>
+                            </div>
+
+                            <div id="passwordRecoveryPanel" class="recovery-panel hidden">
+                                <form id="passwordRecoveryForm" class="form-stack" onsubmit="handlePasswordRecoveryRequest(event)">
+                                    <label class="field">
+                                        <span>가입 이메일</span>
+                                        <input id="recoveryEmail" type="email" placeholder="example@email.com" autocomplete="email" required />
+                                    </label>
+                                    <p class="recovery-note">입력한 이메일로 비밀번호 재설정 링크를 보내드려요.</p>
+                                    <button id="passwordRecoveryButton" class="btn btn-primary" type="submit">재설정 메일 받기</button>
+                                </form>
+                            </div>
+
+                            <div id="passwordUpdatePanel" class="recovery-panel hidden">
+                                <div class="recovery-result success">인증되었습니다. 사용할 새 비밀번호를 입력해주세요.</div>
+                                <form id="passwordUpdateForm" class="form-stack" onsubmit="handlePasswordUpdate(event)">
+                                    <label class="field">
+                                        <span>새 비밀번호</span>
+                                        <input id="newRecoveryPassword" type="password" placeholder="6자 이상 입력" autocomplete="new-password" minlength="6" required />
+                                    </label>
+                                    <label class="field">
+                                        <span>새 비밀번호 확인</span>
+                                        <input id="newRecoveryPasswordConfirm" type="password" placeholder="새 비밀번호 다시 입력" autocomplete="new-password" minlength="6" required />
+                                    </label>
+                                    <button id="passwordUpdateButton" class="btn btn-primary" type="submit">비밀번호 변경</button>
+                                </form>
+                            </div>
+
+                            <p class="switch-copy">기억이 났나요?
+                                <button class="text-link" type="button" onclick="showWorkerScreen('login')">로그인</button>
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+
+                <section id="screen-email-confirmed" class="screen auth-screen">
+                    <div class="auth-card auth-result-card">
+                        <div class="auth-result-content">
+                            <div class="auth-result-icon" aria-hidden="true">✓</div>
+                            <p class="eyebrow">EMAIL VERIFIED</p>
+                            <h1>인증되었습니다</h1>
+                            <p>이메일 인증이 완료되었습니다.<br />이제 가입한 계정으로 로그인할 수 있어요.</p>
+                            <button id="emailConfirmedLoginButton" class="btn btn-primary" type="button"
+                                onclick="finishEmailConfirmation()">
+                                로그인 화면으로 이동
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- ======================================
+             회원가입
+        ======================================= -->
+
+                <section id="screen-signup" class="screen auth-screen long-screen">
+
+                    <div class="auth-card">
+
+                        <div class="auth-topbar">
+
+                            <button class="back-button auth-back" type="button" onclick="showWorkerScreen('welcome')"
+                                aria-label="뒤로 가기">
+                                ←
+                            </button>
+
+                        </div>
+
+
+                        <div class="auth-content">
+
+                            <div class="section-heading">
+
+                                <p class="eyebrow">
+                                    CREATE ACCOUNT
+                                </p>
+
+                                <h1>
+                                    회원가입
+                                </h1>
+
+                                <p>
+                                    회사에서 부여받은 사원코드와 이름으로
+                                    소속 및 사용자 권한을 먼저 확인합니다.
+                                </p>
+
+                            </div>
+
+
+                            <form id="signupForm" class="form-stack" onsubmit="handleSignup(event)">
+
+                                <div class="employee-verification-card">
+
+                                    <div class="employee-verification-heading">
+                                        <span class="verification-step">STEP 1</span>
+                                        <div>
+                                            <strong>사원 확인</strong>
+                                            <p>회사에 등록된 사원코드와 이름을 입력해주세요.</p>
+                                        </div>
+                                    </div>
+
+                                    <label class="field">
+                                        <span>사원코드</span>
+                                        <input id="signupEmployeeCode" type="text" placeholder="예: HB-W001"
+                                            autocomplete="off" autocapitalize="characters" required />
+                                    </label>
+
+                                    <label class="field">
+                                        <span>이름</span>
+                                        <input id="signupName" type="text" placeholder="회사에 등록된 이름" required />
+                                    </label>
+
+                                    <button id="employeeVerifyButton" class="btn employee-verify-button" type="button"
+                                        onclick="verifyEmployeeCode()">
+                                        사원 확인
+                                    </button>
+
+                                    <div id="employeeVerifyResult" class="employee-verify-result hidden"
+                                        aria-live="polite">
+                                        <div class="employee-verify-icon">✓</div>
+                                        <div class="employee-verify-copy">
+                                            <strong>소속이 확인되었습니다.</strong>
+                                            <span id="verifiedCompanyText">-</span>
+                                            <small>
+                                                <span id="verifiedEmployeeCodeText">-</span>
+                                                ·
+                                                <span id="verifiedRoleText">-</span>
+                                            </small>
+                                        </div>
+                                        <button class="employee-reset-button" type="button"
+                                            onclick="resetEmployeeVerification(false)">
+                                            다시 입력
+                                        </button>
+                                    </div>
+
+                                    <p id="employeeVerifyError" class="employee-verify-error hidden" aria-live="polite">
+                                    </p>
+
+                                </div>
+
+
+                                <div id="signupDetails" class="signup-details is-locked">
+
+                                    <div class="signup-details-heading">
+                                        <span class="verification-step">STEP 2</span>
+                                        <div>
+                                            <strong>개인 정보 입력</strong>
+                                            <p>사원 확인 후 계정 정보를 입력할 수 있습니다.</p>
+                                        </div>
+                                    </div>
+
+                                    <input id="signupRole" type="hidden" value="" />
+
+                                    <label class="field">
+                                        <span>회사명</span>
+                                        <input id="signupCompany" type="text" placeholder="사원 확인 후 자동 입력" readonly />
+                                    </label>
+
+                                    <label class="field">
+                                        <span>성별</span>
+                                        <select id="signupGender" disabled required>
+                                            <option value="">선택</option>
+                                            <option value="남성">남성</option>
+                                            <option value="여성">여성</option>
+                                            <option value="기타">기타</option>
+                                        </select>
+                                    </label>
+
+                                    <label class="field">
+                                        <span>전화번호</span>
+                                        <input id="signupPhone" type="tel" placeholder="010-1234-5678" disabled
+                                            required />
+                                    </label>
+
+                                    <label class="field">
+                                        <span>이메일</span>
+                                        <input id="signupEmail" type="email" placeholder="example@email.com" disabled
+                                            required />
+                                    </label>
+
+
+                                    <div id="workerOnlyFields" class="worker-only-fields">
+
+                                        <label class="field">
+                                            <span>연령</span>
+                                            <input id="signupAge" type="number" min="18" max="80" placeholder="예: 42"
+                                                disabled />
+                                        </label>
+
+                                        <label class="field">
+                                            <span>작업 유형</span>
+                                            <input id="signupJobType" type="text" placeholder="예: 건설 / 토목 / 도로 작업"
+                                                disabled />
+                                        </label>
+
+                                        <label class="field">
+                                            <span>작업 장소</span>
+                                            <input id="signupWorkplace" type="text" placeholder="예: 부산 북항 현장"
+                                                disabled />
+                                        </label>
+
+                                        <label class="field">
+                                            <span>작업복 착용 여부</span>
+                                            <select id="signupUniform" disabled>
+                                                <option value="착용">착용</option>
+                                                <option value="미착용">미착용</option>
+                                            </select>
+                                        </label>
+
+                                        <label class="field">
+                                            <span>신체 질환</span>
+                                            <select id="signupHealthCondition" disabled>
+                                                <option value="없음">없음</option>
+                                                <option value="고혈압">고혈압</option>
+                                                <option value="심혈관 질환">심혈관 질환</option>
+                                                <option value="당뇨">당뇨</option>
+                                                <option value="호흡기 질환">호흡기 질환</option>
+                                                <option value="기타">기타</option>
+                                            </select>
+                                        </label>
+
+                                    </div>
+
+
+                                    <label class="field">
+                                        <span>비밀번호</span>
+                                        <input id="signupPassword" type="password" placeholder="비밀번호 6자 이상"
+                                            minlength="6" disabled required />
+                                    </label>
+
+                                    <label class="field">
+                                        <span>비밀번호 확인</span>
+                                        <input id="signupPasswordConfirm" type="password" placeholder="비밀번호 다시 입력"
+                                            minlength="6" disabled required />
+                                    </label>
+
+                                    <button id="signupSubmitButton" class="btn btn-primary" type="submit" disabled>
+                                        회원가입
+                                    </button>
+
+                                </div>
+
+                            </form>
+
+
+                            <div class="signup-demo-box">
+                                <strong>프로토타입 사원코드</strong>
+                                <span>노동자: HB-W001 / 김철수</span>
+                                <span>관리자: HB-A001 / 관리자</span>
+                                <small>사원코드로 회사와 노동자·관리자 권한을 자동 구분합니다.</small>
+                            </div>
+
+
+                            <p class="switch-copy">
+
+                                이미 계정이 있으신가요?
+
+                                <button class="text-link" type="button" onclick="showWorkerScreen('login')">
+                                    로그인
+                                </button>
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!-- ======================================
+             노동자 홈
+        ======================================= -->
+
+                <section id="screen-home" class="screen content-screen">
+
+                    <div class="content-wrap home-content-wrap">
+
+                        <div class="greeting-row">
+
+                            <div>
+
+                                <p class="eyebrow">
+                                    TODAY
+                                </p>
+
+                                <h1>
+                                    안녕하세요,
+                                    <span id="homeUserName">
+                                        김철수
+                                    </span>님!
+                                </h1>
+
+                                <p class="location-line">
+                                    📍
+                                    <span id="homeWorkplace">
+                                        부산 북항 현장
+                                    </span>
+                                </p>
+
+                            </div>
+
+
+                            <div class="weather-mini">
+
+                                <span>
+                                    체감
+                                </span>
+
+                                <strong>
+                                    33°
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- 현재 체감온도 -->
+
+                        <article class="card hero-card">
+
+                            <div class="hero-top">
+
+                                <div class="hero-main">
+
+                                    <span class="card-label">
+                                        현재 체감온도
+                                    </span>
+
+                                    <div class="temperature-line">
+
+                                        <strong class="current-temperature">
+                                            33℃
+                                        </strong>
+
+                                        <span class="status-pill home-risk">
+                                            주의
+                                        </span>
+
+                                    </div>
+
+                                    <p class="hero-description">
+                                        기온이 높습니다. 충분한 수분 섭취와 정기적인 휴식을 권장합니다.
+                                    </p>
+
+                                </div>
+
+
+                                <span class="weather-icon" aria-hidden="true">
+                                    ☀️
+                                </span>
+
+                            </div>
+
+                        </article>
+
+
+                        <!-- 작업 상태 -->
+
+                        <div class="two-column">
+
+                            <article class="card stat-card">
+
+                                <span class="card-label">
+                                    작업 상태
+                                </span>
+
+                                <strong id="workStatusText">
+                                    대기 중
+                                </strong>
+
+                                <small id="workElapsedText">
+                                    작업을 시작해주세요
+                                </small>
+
+                            </article>
+
+
+                            <article class="card stat-card">
+
+                                <span class="card-label">
+                                    다음 권장 휴식
+                                </span>
+
+                                <strong id="nextRestText">
+                                    14:32
+                                </strong>
+
+                                <small>
+                                    권장 휴식 시간
+                                </small>
+
+                            </article>
+
+                        </div>
+
+
+                        <!-- 메인 버튼 -->
+
+                        <div class="action-stack home-actions">
+
+                            <button id="workStartButton" class="btn btn-work" type="button" onclick="startWork()">
+                                작업 시작
+                            </button>
+
+
+                            <button class="btn btn-rest home-rest-button" type="button" onclick="startRest()">
+                                휴식 시작
+                            </button>
+
+                        </div>
+
+
+                        <!-- 오늘의 안전 상태 -->
+
+                        <section class="home-extra-section">
+
+                            <div class="home-section-heading">
+
+                                <div>
+                                    <span class="home-section-eyebrow">
+                                        SAFETY STATUS
+                                    </span>
+
+                                    <h2>
+                                        오늘의 안전 상태
+                                    </h2>
+                                </div>
+
+                            </div>
+
+
+                            <article class="home-safety-card">
+
+                                <div class="home-safety-top">
+
+                                    <div class="home-safety-state">
+
+                                        <span class="home-safety-dot"></span>
+
+                                        <strong id="homeSafetyTitle">
+                                            주의 단계
+                                        </strong>
+
+                                    </div>
+
+                                    <span id="homeSafetyBadge" class="home-safety-badge">
+                                        모니터링 중
+                                    </span>
+
+                                </div>
+
+
+                                <p id="homeSafetyDescription">
+                                    현재 체감온도가 높습니다.
+                                    충분한 수분을 섭취하고 권장 휴식 시간을 확인해주세요.
+                                </p>
+
+
+                                <div class="home-safety-guides">
+
+                                    <span>
+                                        💧 수분 섭취
+                                    </span>
+
+                                    <span>
+                                        🌳 그늘 휴식
+                                    </span>
+
+                                </div>
+
+                            </article>
+
+                        </section>
+
+
+                        <!-- 오늘의 기록 -->
+
+                        <section class="home-extra-section home-record-section">
+
+                            <div class="home-section-heading">
+
+                                <div>
+                                    <span class="home-section-eyebrow">
+                                        TODAY SUMMARY
+                                    </span>
+
+                                    <h2>
+                                        오늘의 기록
+                                    </h2>
+                                </div>
+
+                                <button class="home-record-link" type="button" onclick="showWorkerScreen('record')">
+                                    전체 보기 →
+                                </button>
+
+                            </div>
+
+
+                            <div class="home-daily-grid">
+
+                                <article class="home-daily-item">
+
+                                    <span class="home-daily-icon">
+                                        ⏱
+                                    </span>
+
+                                    <div>
+                                        <small>작업</small>
+
+                                        <strong id="homeWorkToday">
+                                            185분
+                                        </strong>
+                                    </div>
+
+                                </article>
+
+
+                                <article class="home-daily-item">
+
+                                    <span class="home-daily-icon rest">
+                                        ☕
+                                    </span>
+
+                                    <div>
+                                        <small>휴식</small>
+
+                                        <strong id="homeRestToday">
+                                            60분
+                                        </strong>
+                                    </div>
+
+                                </article>
+
+
+                                <article class="home-daily-item">
+
+                                    <span class="home-daily-icon alert">
+                                        🔔
+                                    </span>
+
+                                    <div>
+                                        <small>안전 알림</small>
+
+                                        <strong id="homeAlertToday">
+                                            2회
+                                        </strong>
+                                    </div>
+
+                                </article>
+
+                            </div>
+
+                        </section>
+
+                    </div>
+
+                </section>
+
+
+                <!-- ======================================
+             작업 진행
+        ======================================= -->
+
+                <section id="screen-work-progress" class="screen content-screen">
+
+                    <div class="content-wrap">
+
+                        <div class="section-heading compact">
+
+                            <p class="eyebrow">
+                                WORK SESSION
+                            </p>
+
+                            <h1>
+                                작업 진행 중
+                            </h1>
+
+                            <p>
+                                현재 작업 시간이 기록되고 있습니다.
+                            </p>
+
+                        </div>
+
+
+                        <article class="card progress-card">
+
+                            <!-- 2시간 기준 원형 타이머 -->
+
+                            <div id="workRing" class="progress-ring work-ring">
+
+                                <span>
+                                    작업 시간
+                                </span>
+
+                                <strong id="workTimer">
+                                    00:00:00
+                                </strong>
+
+                                <small>
+                                    2시간 기준
+                                </small>
+
+                            </div>
+
+
+                            <div class="progress-meta">
+
+                                <div>
+
+                                    <span>
+                                        체감온도
+                                    </span>
+
+                                    <strong>
+                                        33℃
+                                    </strong>
+
+                                </div>
+
+
+                                <div>
+
+                                    <span>
+                                        현재 위험도
+                                    </span>
+
+                                    <strong class="risk-text">
+                                        주의
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+
+                        <article class="card checklist-card">
+
+                            <h2>
+                                안전 체크
+                            </h2>
+
+                            <div class="check-item">
+                                ✓ 수분을 가까이 두고 작업하기
+                            </div>
+
+                            <div class="check-item">
+                                ✓ 몸 상태 이상 시 즉시 휴식하기
+                            </div>
+
+                            <div class="check-item">
+                                ✓ 알림이 오면 권장 휴식 확인하기
+                            </div>
+
+                        </article>
+
+
+                        <div class="action-stack">
+
+                            <button class="btn btn-rest" type="button" onclick="startRest()">
+                                휴식 시작
+                            </button>
+
+
+                            <button class="btn btn-danger-soft" type="button" onclick="endWork()">
+                                작업 종료
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- ======================================
+             휴식 경고
+        ======================================= -->
+
+                <section id="screen-rest-alert" class="screen alert-screen">
+
+                    <div class="alert-wrap">
+
+                        <div class="danger-symbol">
+                            !
+                        </div>
+
+
+                        <p class="eyebrow danger-eyebrow">
+                            REST ALERT
+                        </p>
+
+
+                        <h1>
+                            지금<br />
+                            휴식이 필요합니다!
+                        </h1>
+
+
+                        <p>
+                            체감온도 상승으로
+                            열사병 위험이 높아졌습니다.
+                        </p>
+
+
+                        <article class="danger-temperature-card">
+
+                            <span>
+                                현재 체감온도
+                            </span>
+
+                            <strong>
+                                35℃
+                            </strong>
+
+                            <span class="status-pill alert-risk">
+                                위험
+                            </span>
+
+                        </article>
+
+
+                        <button class="btn btn-light" type="button" onclick="startRest()">
+                            휴식 시작
+                        </button>
+
+
+                        <button class="alert-text-button" type="button" onclick="snoozeRestAlert()">
+                            5분 후 다시 알림
+                        </button>
+
+                    </div>
+
+                </section>
+
+
+                <!-- ======================================
+             휴식 진행
+        ======================================= -->
+
+                <section id="screen-rest-progress" class="screen content-screen">
+
+                    <div class="content-wrap">
+
+                        <div class="section-heading compact">
+
+                            <p class="eyebrow">
+                                REST SESSION
+                            </p>
+
+                            <h1>
+                                휴식 진행 중
+                            </h1>
+
+                            <p>
+                                권장 휴식 시간 동안
+                                안전하게 회복해주세요.
+                            </p>
+
+                        </div>
+
+
+                        <article class="card progress-card rest-progress-card">
+
+                            <div id="restRing" class="progress-ring rest-ring">
+
+                                <span>
+                                    남은 시간
+                                </span>
+
+                                <strong id="restTimer">
+                                    20:00
+                                </strong>
+
+                                <small>
+                                    / 20:00
+                                </small>
+
+                            </div>
+
+
+                            <div class="rest-checks">
+
+                                <div class="check-item">
+                                    ✓ 그늘 또는 시원한 장소
+                                </div>
+
+                                <div class="check-item">
+                                    ✓ 수분 섭취
+                                </div>
+
+                                <div class="check-item">
+                                    ✓ 몸 상태 확인
+                                </div>
+
+                            </div>
+
+                        </article>
+
+
+                        <button class="btn btn-primary" type="button" onclick="endRest()">
+                            휴식 종료
+                        </button>
+
+                    </div>
+
+                </section>
+
+
+                <!-- ======================================
+             기록
+        ======================================= -->
+
+                <section id="screen-record" class="screen content-screen">
+
+                    <div class="content-wrap record-content-wrap">
+
+                        <div class="section-heading compact">
+
+                            <p class="eyebrow">
+                                HISTORY
+                            </p>
+
+                            <h1>
+                                기록
+                            </h1>
+
+                            <p>
+                                오늘의 작업과 휴식 기록을 확인하세요.
+                            </p>
+
+                        </div>
+
+
+                        <!-- 작업 / 휴식 탭 -->
+
+                        <div class="segmented-control" role="tablist">
+
+                            <button id="workTab" class="segment active" type="button" onclick="setRecordTab('work')">
+                                작업 기록
+                            </button>
+
+
+                            <button id="restTab" class="segment" type="button" onclick="setRecordTab('rest')">
+                                휴식 기록
+                            </button>
+
+                        </div>
+
+
+                        <!-- 상단 통계 -->
+
+                        <div id="recordSummary" class="summary-grid"></div>
+
+
+                        <!-- 오늘의 안전 요약 -->
+
+                        <article class="record-safety-overview">
+
+                            <div class="record-overview-heading">
+
+                                <div>
+                                    <span class="record-overview-eyebrow">
+                                        DAILY SAFETY
+                                    </span>
+
+                                    <h2>
+                                        오늘의 안전 요약
+                                    </h2>
+                                </div>
+
+                                <span class="record-safe-badge">
+                                    정상
+                                </span>
+
+                            </div>
+
+
+                            <div class="record-overview-grid">
+
+                                <div class="record-overview-item">
+
+                                    <span>
+                                        총 작업
+                                    </span>
+
+                                    <strong id="recordTotalWork">
+                                        3시간 05분
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="record-overview-item">
+
+                                    <span>
+                                        총 휴식
+                                    </span>
+
+                                    <strong id="recordTotalRest">
+                                        60분
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="record-overview-item">
+
+                                    <span>
+                                        평균 체감온도
+                                    </span>
+
+                                    <strong id="recordAverageTemp">
+                                        31℃
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="record-overview-item">
+
+                                    <span>
+                                        최고 체감온도
+                                    </span>
+
+                                    <strong id="recordMaxTemp">
+                                        33℃
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+
+                            <div class="record-safety-message">
+
+                                <span>
+                                    ✓
+                                </span>
+
+                                <p>
+                                    오늘도 권장 휴식을 지키며
+                                    안전하게 작업하고 있어요.
+                                </p>
+
+                            </div>
+
+                        </article>
+
+
+                        <!-- 기록 목록 제목 -->
+
+                        <div class="record-list-heading">
+
+                            <h2 id="recordListTitle">
+                                작업 기록
+                            </h2>
+
+                            <span id="recordListCount">
+                                3건
+                            </span>
+
+                        </div>
+
+
+                        <!-- 실제 기록 -->
+
+                        <div id="recordList" class="record-list"></div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- ======================================
+             마이페이지
+        ======================================= -->
+
+                <section id="screen-mypage" class="screen content-screen">
+
+                    <div class="content-wrap">
+
+                        <div class="profile-heading">
+
+                            <div class="profile-avatar" id="profileInitial">
+                                김
+                            </div>
+
+
+                            <div>
+
+                                <div class="profile-name-line">
+
+                                    <h1 id="profileName">
+                                        김철수
+                                    </h1>
+
+                                    <span id="profileGender" class="gender-badge">
+                                        남성
+                                    </span>
+
+                                </div>
+
+
+                                <p>
+                                    <span id="profileRole">
+                                        노동자
+                                    </span>
+                                    · SHIMON 이용자
+                                </p>
+
+                            </div>
+
+                        </div>
+
+
+                        <article class="card info-list-card">
+
+                            <div class="info-row">
+                                <span>사원코드</span>
+                                <strong id="profileEmployeeCode">-</strong>
+                            </div>
+
+                            <div class="info-row">
+                                <span>회사명</span>
+                                <strong id="profileCompany">-</strong>
+                            </div>
+
+                            <div class="info-row">
+
+                                <span>
+                                    작업 유형
+                                </span>
+
+                                <strong id="profileJobType">
+                                    토목 작업
+                                </strong>
+
+                            </div>
+
+
+                            <div class="info-row">
+
+                                <span>
+                                    작업 장소
+                                </span>
+
+                                <strong id="profileWorkplace">
+                                    부산 북항 현장
+                                </strong>
+
+                            </div>
+                            <div class="info-row">
+                                <span>작업 강도</span>
+                                <strong id="profileWorkIntensity">보통</strong>
+                            </div>
+
+                            <div class="info-row">
+
+                                <span>
+                                    작업복
+                                </span>
+
+                                <strong id="profileUniform">
+                                    착용
+                                </strong>
+
+                            </div>
+
+                            <div class="info-row">
+                                <span>연령</span>
+                                <strong id="profileAge">-</strong>
+                            </div>
+
+                            <div class="info-row">
+                                <span>신체 질환</span>
+                                <strong id="profileHealthCondition">없음</strong>
+                            </div>
+
+                        </article>
+
+
+                        <article class="card settings-card">
+
+                            <button type="button" onclick="toggleNotifications()">
+
+                                <span>
+                                    🔔 알림 설정
+                                </span>
+
+                                <span id="notificationSetting">
+                                    켜짐 ›
+                                </span>
+
+                            </button>
+
+
+                            <button type="button" onclick="openProfileEdit()">
+                                <span>⚙️ 작업 정보 수정</span>
+                                <span>›</span>
+                            </button>
+
+                        </article>
+
+
+                        <button class="btn btn-outline" type="button" onclick="logout()">
+                            로그아웃
+                        </button>
+
+                        <button id="deleteAccountButton" class="account-delete-button" type="button"
+                            onclick="openDeleteAccountModal()">
+                            계정 탈퇴
+                        </button>
+
+                    </div>
+
+                </section>
+                <section id="screen-settings" class="screen content-screen">
+
+                    <div class="settings-screen-wrap">
+
+                        <div class="settings-page-header">
+
+                            <button class="settings-back-button" type="button" onclick="closeProfileEdit()">
+                                ←
+                            </button>
+
+                            <div>
+                                <p class="eyebrow">SETTINGS</p>
+
+                                <h1>작업 정보 수정</h1>
+
+                                <p>
+                                    현재 작업 환경 정보를 수정할 수 있습니다.
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        <div class="settings-fields">
+
+                            <label class="field">
+                                <span>작업 유형</span>
+
+                                <input id="editJobType" type="text" placeholder="예: 토목 작업" />
+                            </label>
+
+
+                            <label class="field">
+                                <span>작업 장소</span>
+
+                                <input id="editWorkplace" type="text" placeholder="예: 부산 북항 현장" />
+                            </label>
+
+
+                            <label class="field">
+                                <span>작업 강도</span>
+
+                                <select id="editWorkIntensity">
+                                    <option value="낮음">낮음</option>
+                                    <option value="보통">보통</option>
+                                    <option value="높음">높음</option>
+                                </select>
+                            </label>
+
+
+                            <label class="field">
+                                <span>작업복 착용 여부</span>
+
+                                <select id="editUniform">
+                                    <option value="착용">착용</option>
+                                    <option value="미착용">미착용</option>
+                                </select>
+                            </label>
+
+
+                            <label class="field">
+                                <span>성별</span>
+
+                                <select id="editGender">
+                                    <option value="남성">남성</option>
+                                    <option value="여성">여성</option>
+                                    <option value="기타">기타</option>
+                                </select>
+                            </label>
+
+
+                            <label class="field">
+                                <span>전화번호</span>
+
+                                <input id="editPhone" type="tel" placeholder="010-1234-5678" />
+                            </label>
+
+
+                            <label class="field">
+                                <span>이메일</span>
+
+                                <input id="editEmail" type="email" placeholder="example@email.com" />
+                            </label>
+
+                        </div>
+
+
+                        <div class="settings-bottom-actions">
+
+                            <button class="settings-cancel-btn" type="button" onclick="closeProfileEdit()">
+                                취소
+                            </button>
+
+                            <button class="settings-complete-btn" type="button" onclick="saveProfileEdit()">
+                                완료
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </section>
+                <!-- ======================================
+             알림 목록
+        ======================================= -->
+
+                <section id="screen-notifications" class="screen content-screen">
+
+                    <div class="content-wrap">
+
+                        <div class="section-heading compact with-back">
+
+                            <button class="back-button inline" type="button" onclick="showWorkerScreen(lastMainScreen)">
+                                ←
+                            </button>
+
+
+                            <div>
+
+                                <p class="eyebrow">
+                                    NOTIFICATIONS
+                                </p>
+
+                                <h1>
+                                    알림
+                                </h1>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="notification-list">
+
+                            <button class="card notification-card" type="button"
+                                onclick="showWorkerScreen('rest-alert')">
+
+                                <span class="notification-icon danger-bg">
+                                    ⚠️
+                                </span>
+
+
+                                <span>
+
+                                    <strong>
+                                        휴식 권장 알림
+                                    </strong>
+
+                                    <small>
+                                        체감온도가 높아졌습니다.
+                                        지금 휴식을 권장합니다.
+                                    </small>
+
+                                </span>
+
+
+                                <time>
+                                    방금
+                                </time>
+
+                            </button>
+
+
+                            <button class="card notification-card" type="button"
+                                onclick="showToast('작업 시작 알림을 확인했습니다.')">
+
+                                <span class="notification-icon success-bg">
+                                    ✓
+                                </span>
+
+
+                                <span>
+
+                                    <strong>
+                                        작업 시작 알림
+                                    </strong>
+
+                                    <small>
+                                        작업 기록이 시작되었습니다.
+                                    </small>
+
+                                </span>
+
+
+                                <time>
+                                    10분 전
+                                </time>
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+            </main>
+
+
+            <!-- 하단 메뉴 -->
+
+            <nav id="bottomNav" class="bottom-nav hidden" aria-label="하단 메뉴">
+
+                <button class="nav-item active" data-screen="home" type="button" onclick="showWorkerScreen('home')">
+
+                    <span>
+                        ⌂
+                    </span>
+
+                    <small>
+                        홈
+                    </small>
+
+                </button>
+
+
+                <button class="nav-item" data-screen="record" type="button" onclick="showWorkerScreen('record')">
+
+                    <span>
+                        ▤
+                    </span>
+
+                    <small>
+                        기록
+                    </small>
+
+                </button>
+
+
+                <button class="nav-item" data-screen="mypage" type="button" onclick="showWorkerScreen('mypage')">
+
+                    <span>
+                        ◉
+                    </span>
+
+                    <small>
+                        마이페이지
+                    </small>
+
+                </button>
+
+            </nav>
+
+        </div>
+
+    </div>
+
+
+    <!-- ======================================
+       관리자 PC 대시보드
+  ======================================= -->
+
+    <div id="adminApp" class="admin-app hidden">
+
+        <aside class="admin-sidebar">
+            <div class="admin-sidebar-top">
+                <button class="admin-brand" type="button" onclick="showAdminPage('dashboard')" aria-label="관리자 대시보드 홈">
+                    <span class="admin-brand-mark" aria-hidden="true">☀️</span>
+                    <strong>SHIMON Admin</strong>
+                    <span class="admin-brand-chevron" aria-hidden="true">‹</span>
+                </button>
+
+                <nav class="admin-nav" aria-label="관리자 메뉴">
+                    <button class="admin-nav-item active" data-admin-target="dashboard" type="button"
+                        onclick="showAdminPage('dashboard')">
+                        <span class="admin-nav-icon" aria-hidden="true">📊</span>
+                        <span>대시보드</span>
+                    </button>
+                    <button class="admin-nav-item" data-admin-target="workers" type="button"
+                        onclick="showAdminPage('workers')">
+                        <span class="admin-nav-icon" aria-hidden="true">👷</span>
+                        <span>작업자 현황</span>
+                    </button>
+                    <button class="admin-nav-item" data-admin-target="alerts" type="button"
+                        onclick="showAdminPage('alerts')">
+                        <span class="admin-nav-icon" aria-hidden="true">🔔</span>
+                        <span>위험 알림</span>
+                    </button>
+                    <button class="admin-nav-item" data-admin-target="admin-settings" type="button"
+                        onclick="showAdminPage('admin-settings')">
+                        <span class="admin-nav-icon" aria-hidden="true">⚙️</span>
+                        <span>설정</span>
+                    </button>
+                </nav>
+            </div>
+
+            <div class="admin-profile">
+                <span class="admin-profile-avatar" aria-hidden="true">👤</span>
+                <div>
+                    <strong id="adminName">관리자</strong>
+                    <span id="adminEmail">admin@shimon.kr</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="admin-main">
+            <header class="admin-topbar">
+                <h1 id="adminPageTitle">대시보드</h1>
+            </header>
+
+            <div class="admin-content">
+                <!-- 대시보드 -->
+                <section class="admin-page active" data-admin-page="dashboard">
+                    <div class="admin-metric-grid">
+                        <article class="admin-metric-card metric-total">
+                            <div>
+                                <span class="admin-card-label">전체 작업자</span>
+                                <strong>8명</strong>
+                                <small>3개 현장</small>
+                            </div>
+                            <span class="admin-metric-symbol" aria-hidden="true">👤</span>
+                            <span class="admin-metric-line"></span>
+                        </article>
+
+                        <article class="admin-metric-card metric-danger">
+                            <div>
+                                <span class="admin-card-label">위험 (43°C+)</span>
+                                <strong>2명</strong>
+                                <small>즉시 조치 필요</small>
+                            </div>
+                            <span class="admin-metric-symbol" aria-hidden="true">⚠️</span>
+                            <span class="admin-metric-line"></span>
+                        </article>
+
+                        <article class="admin-metric-card metric-caution">
+                            <div>
+                                <span class="admin-card-label">주의 (38~43°C)</span>
+                                <strong>4명</strong>
+                                <small>모니터링 중</small>
+                            </div>
+                            <span class="admin-metric-symbol diamond" aria-hidden="true"></span>
+                            <span class="admin-metric-line"></span>
+                        </article>
+
+                        <article class="admin-metric-card metric-normal">
+                            <div>
+                                <span class="admin-card-label">정상 (38°C 미만)</span>
+                                <strong>2명</strong>
+                                <small>안전 상태</small>
+                            </div>
+                            <span class="admin-metric-symbol" aria-hidden="true">☑️</span>
+                            <span class="admin-metric-line"></span>
+                        </article>
+                    </div>
+
+                    <div class="admin-dashboard-main-grid">
+                        <article class="admin-panel admin-trend-panel">
+                            <div class="admin-panel-heading">
+                                <h2>체감온도 추이 (오늘)</h2>
+                                <span>강남 현장 기준</span>
+                            </div>
+
+                            <div class="admin-trend-chart" aria-label="오늘 시간대별 체감온도 추이">
+                                <svg viewBox="0 0 720 250" role="img" aria-label="08시부터 17시까지 체감온도가 상승했다가 하락하는 그래프">
+                                    <defs>
+                                        <linearGradient id="adminTrendFill" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stop-color="#ef4444" stop-opacity="0.17" />
+                                            <stop offset="100%" stop-color="#ef4444" stop-opacity="0.02" />
+                                        </linearGradient>
+                                    </defs>
+                                    <g class="admin-chart-grid">
+                                        <line x1="58" y1="42" x2="690" y2="42" />
+                                        <line x1="58" y1="82" x2="690" y2="82" />
+                                        <line x1="58" y1="122" x2="690" y2="122" />
+                                        <line x1="58" y1="162" x2="690" y2="162" />
+                                    </g>
+                                    <g class="admin-chart-y-labels">
+                                        <text x="22" y="46">44°</text>
+                                        <text x="22" y="86">42°</text>
+                                        <text x="22" y="126">40°</text>
+                                        <text x="22" y="166">38°</text>
+                                    </g>
+                                    <path class="admin-chart-area"
+                                        d="M58 164 L128 142 L198 122 L268 100 L338 70 L408 46 L478 57 L548 82 L618 104 L690 128 L690 188 L58 188 Z" />
+                                    <polyline class="admin-chart-line"
+                                        points="58,164 128,142 198,122 268,100 338,70 408,46 478,57 548,82 618,104 690,128" />
+                                    <g class="admin-chart-dots">
+                                        <circle cx="58" cy="164" r="4" />
+                                        <circle cx="128" cy="142" r="4" />
+                                        <circle cx="198" cy="122" r="4" />
+                                        <circle cx="268" cy="100" r="4" />
+                                        <circle cx="338" cy="70" r="4" />
+                                        <circle cx="408" cy="46" r="4" />
+                                        <circle cx="478" cy="57" r="4" />
+                                        <circle cx="548" cy="82" r="4" />
+                                        <circle cx="618" cy="104" r="4" />
+                                        <circle cx="690" cy="128" r="4" />
+                                    </g>
+                                    <g class="admin-chart-x-labels">
+                                        <text x="58" y="222">08:00</text><text x="128" y="222">09:00</text>
+                                        <text x="198" y="222">10:00</text><text x="268" y="222">11:00</text>
+                                        <text x="338" y="222">12:00</text><text x="408" y="222">13:00</text>
+                                        <text x="478" y="222">14:00</text><text x="548" y="222">15:00</text>
+                                        <text x="618" y="222">16:00</text><text x="690" y="222">17:00</text>
+                                    </g>
+                                </svg>
+                            </div>
+
+                            <div class="admin-trend-stats">
+                                <span>현재 <strong>43°C</strong></span>
+                                <span>최고 <strong>43°C</strong></span>
+                                <span>평균 <strong>38.9°C</strong></span>
+                            </div>
+                        </article>
+
+                        <article class="admin-panel admin-risk-panel">
+                            <h2>위험 작업자 알림</h2>
+
+                            <div class="admin-risk-card danger">
+                                <div class="admin-risk-row">
+                                    <strong>김민준</strong>
+                                    <span>매우 위험</span>
+                                </div>
+                                <p>강남 현장 A구역</p>
+                                <p class="admin-risk-values">체온 38.5°C&nbsp;&nbsp; 체감 43°C</p>
+                                <button type="button" onclick="adminSendAlert('김민준', true)">즉시 휴식 알림 발송</button>
+                            </div>
+
+                            <div class="admin-risk-card danger">
+                                <div class="admin-risk-row">
+                                    <strong>윤지호</strong>
+                                    <span>매우 위험</span>
+                                </div>
+                                <p>미포 현장 A구역</p>
+                                <p class="admin-risk-values">체온 38.9°C&nbsp;&nbsp; 체감 44°C</p>
+                                <button type="button" onclick="adminSendAlert('윤지호', true)">즉시 휴식 알림 발송</button>
+                            </div>
+
+                            <div class="admin-risk-summary">
+                                <strong>주의 작업자 4명</strong>
+                                <span>체감온도 38~43°C 구간</span>
+                            </div>
+                        </article>
+                    </div>
+
+                    <article class="admin-panel admin-worker-preview">
+                        <div class="admin-panel-heading">
+                            <h2>작업자 현황</h2>
+                            <button type="button" onclick="showAdminPage('workers')">전체 보기 →</button>
+                        </div>
+                        <div class="admin-table-wrap">
+                            <table class="admin-worker-table compact-table">
+                                <thead>
+                                    <tr>
+                                        <th>사번</th>
+                                        <th>이름</th>
+                                        <th>현장</th>
+                                        <th>체온</th>
+                                        <th>체감온도</th>
+                                        <th>상태</th>
+                                        <th>작업시간</th>
+                                        <th>위험도</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>W001</td>
+                                        <td><strong>김민준</strong></td>
+                                        <td>강남 현장 A구역</td>
+                                        <td>38.5</td>
+                                        <td class="temp-danger">43</td>
+                                        <td><span class="status-chip working">작업중</span></td>
+                                        <td>3h 12m</td>
+                                        <td><span class="risk-chip danger">매우 위험</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>W002</td>
+                                        <td><strong>이서준</strong></td>
+                                        <td>강남 현장 B구역</td>
+                                        <td>36.8</td>
+                                        <td class="temp-caution">40</td>
+                                        <td><span class="status-chip resting">휴식중</span></td>
+                                        <td>2h 50m</td>
+                                        <td><span class="risk-chip caution">주의</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>W003</td>
+                                        <td><strong>박도윤</strong></td>
+                                        <td>강남 현장 A구역</td>
+                                        <td>35.1</td>
+                                        <td class="temp-normal">37</td>
+                                        <td><span class="status-chip working">작업중</span></td>
+                                        <td>4h 05m</td>
+                                        <td><span class="risk-chip normal">정상</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+                </section>
+
+                <!-- 작업자 현황 -->
+                <section class="admin-page" data-admin-page="workers">
+                    <div class="admin-worker-toolbar">
+                        <label class="admin-search-box">
+                            <span aria-hidden="true">⌕</span>
+                            <input id="adminWorkerSearch" type="search" placeholder="이름, 현장, 사번 검색..."
+                                oninput="applyAdminWorkerFilters()" />
+                        </label>
+                        <div class="admin-filter-group" role="group" aria-label="위험도 필터">
+                            <button class="active" data-worker-filter="all" type="button"
+                                onclick="setAdminWorkerFilter('all', this)">전체</button>
+                            <button data-worker-filter="danger" type="button"
+                                onclick="setAdminWorkerFilter('danger', this)">위험</button>
+                            <button data-worker-filter="caution" type="button"
+                                onclick="setAdminWorkerFilter('caution', this)">주의</button>
+                            <button data-worker-filter="normal" type="button"
+                                onclick="setAdminWorkerFilter('normal', this)">정상</button>
+                        </div>
+                    </div>
+
+                    <article class="admin-panel admin-workers-table-panel">
+                        <div class="admin-table-wrap">
+                            <table class="admin-worker-table" id="adminWorkersTable">
+                                <thead>
+                                    <tr>
+                                        <th>사번</th>
+                                        <th>이름</th>
+                                        <th>현장</th>
+                                        <th>체온 (°C)</th>
+                                        <th>체감온도 (°C)</th>
+                                        <th>상태</th>
+                                        <th>작업시간</th>
+                                        <th>위험도</th>
+                                        <th>조치</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr data-risk="danger" data-search="W001 김민준 강남 현장 A구역">
+                                        <td>W001</td>
+                                        <td><strong>김민준</strong></td>
+                                        <td>강남 현장 A구역</td>
+                                        <td>38.5</td>
+                                        <td class="temp-danger">43</td>
+                                        <td><span class="status-chip working">작업중</span></td>
+                                        <td>3h 12m</td>
+                                        <td><span class="risk-chip danger">매우 위험</span></td>
+                                        <td><button class="admin-action-btn danger" type="button"
+                                                onclick="adminSendAlert('김민준', true)">즉시 알림</button></td>
+                                    </tr>
+                                    <tr data-risk="caution" data-search="W002 이서준 강남 현장 B구역">
+                                        <td>W002</td>
+                                        <td><strong>이서준</strong></td>
+                                        <td>강남 현장 B구역</td>
+                                        <td>36.8</td>
+                                        <td class="temp-caution">40</td>
+                                        <td><span class="status-chip resting">휴식중</span></td>
+                                        <td>2h 50m</td>
+                                        <td><span class="risk-chip caution">주의</span></td>
+                                        <td><button class="admin-action-btn" type="button"
+                                                onclick="adminSendAlert('이서준')">알림 발송</button></td>
+                                    </tr>
+                                    <tr data-risk="normal" data-search="W003 박도윤 강남 현장 A구역">
+                                        <td>W003</td>
+                                        <td><strong>박도윤</strong></td>
+                                        <td>강남 현장 A구역</td>
+                                        <td>35.1</td>
+                                        <td class="temp-normal">37</td>
+                                        <td><span class="status-chip working">작업중</span></td>
+                                        <td>4h 05m</td>
+                                        <td><span class="risk-chip normal">정상</span></td>
+                                        <td><button class="admin-action-btn" type="button"
+                                                onclick="adminSendAlert('박도윤')">알림 발송</button></td>
+                                    </tr>
+                                    <tr data-risk="caution" data-search="W004 최지훈 강남 현장 C구역">
+                                        <td>W004</td>
+                                        <td><strong>최지훈</strong></td>
+                                        <td>강남 현장 C구역</td>
+                                        <td>37.4</td>
+                                        <td class="temp-caution">41</td>
+                                        <td><span class="status-chip working">작업중</span></td>
+                                        <td>1h 30m</td>
+                                        <td><span class="risk-chip caution">주의</span></td>
+                                        <td><button class="admin-action-btn" type="button"
+                                                onclick="adminSendAlert('최지훈')">알림 발송</button></td>
+                                    </tr>
+                                    <tr data-risk="caution" data-search="W005 정하윤 서초 현장 A구역">
+                                        <td>W005</td>
+                                        <td><strong>정하윤</strong></td>
+                                        <td>서초 현장 A구역</td>
+                                        <td>36.2</td>
+                                        <td class="temp-caution">38</td>
+                                        <td><span class="status-chip working">작업중</span></td>
+                                        <td>5h 20m</td>
+                                        <td><span class="risk-chip caution">주의</span></td>
+                                        <td><button class="admin-action-btn" type="button"
+                                                onclick="adminSendAlert('정하윤')">알림 발송</button></td>
+                                    </tr>
+                                    <tr data-risk="normal" data-search="W006 강서연 서초 현장 B구역">
+                                        <td>W006</td>
+                                        <td><strong>강서연</strong></td>
+                                        <td>서초 현장 B구역</td>
+                                        <td>35.8</td>
+                                        <td class="temp-normal">36</td>
+                                        <td><span class="status-chip working">작업중</span></td>
+                                        <td>3h 44m</td>
+                                        <td><span class="risk-chip normal">정상</span></td>
+                                        <td><button class="admin-action-btn" type="button"
+                                                onclick="adminSendAlert('강서연')">알림 발송</button></td>
+                                    </tr>
+                                    <tr data-risk="danger" data-search="W007 윤지호 미포 현장 A구역">
+                                        <td>W007</td>
+                                        <td><strong>윤지호</strong></td>
+                                        <td>미포 현장 A구역</td>
+                                        <td>38.9</td>
+                                        <td class="temp-danger">44</td>
+                                        <td><span class="status-chip working">작업중</span></td>
+                                        <td>2h 15m</td>
+                                        <td><span class="risk-chip danger">매우 위험</span></td>
+                                        <td><button class="admin-action-btn danger" type="button"
+                                                onclick="adminSendAlert('윤지호', true)">즉시 알림</button></td>
+                                    </tr>
+                                    <tr data-risk="caution" data-search="W008 임채원 미포 현장 B구역">
+                                        <td>W008</td>
+                                        <td><strong>임채원</strong></td>
+                                        <td>미포 현장 B구역</td>
+                                        <td>36.0</td>
+                                        <td class="temp-caution">39</td>
+                                        <td><span class="status-chip resting">휴식중</span></td>
+                                        <td>4h 00m</td>
+                                        <td><span class="risk-chip caution">주의</span></td>
+                                        <td><button class="admin-action-btn" type="button"
+                                                onclick="adminSendAlert('임채원')">알림 발송</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p id="adminWorkerEmpty" class="admin-empty-state hidden">검색 조건에 맞는 작업자가 없습니다.</p>
+                    </article>
+                </section>
+
+                <!-- 위험 알림 -->
+                <section class="admin-page" data-admin-page="alerts">
+                    <p class="admin-page-description">오늘 총 9건의 위험 알림이 발생했습니다.</p>
+
+                    <div class="admin-alert-list">
+                        <article class="admin-alert-item danger">
+                            <div class="admin-alert-icon" aria-hidden="true">🚨</div>
+                            <div class="admin-alert-content">
+                                <div><strong>김민준</strong><span class="admin-alert-tag danger">체감온도 초과</span></div>
+                                <p>측정값: 43°C</p>
+                            </div>
+                            <div class="admin-alert-meta"><time>14:28</time><button type="button"
+                                    onclick="adminSendAlert('김민준')">알림 발송됨</button></div>
+                        </article>
+                        <article class="admin-alert-item danger">
+                            <div class="admin-alert-icon" aria-hidden="true">🚨</div>
+                            <div class="admin-alert-content">
+                                <div><strong>윤지호</strong><span class="admin-alert-tag danger">체감온도 초과</span></div>
+                                <p>측정값: 44°C</p>
+                            </div>
+                            <div class="admin-alert-meta"><time>13:55</time><button class="danger" type="button"
+                                    onclick="adminSendAlert('윤지호', true)">즉시 조치</button></div>
+                        </article>
+                        <article class="admin-alert-item caution">
+                            <div class="admin-alert-icon" aria-hidden="true">⚠️</div>
+                            <div class="admin-alert-content">
+                                <div><strong>최지훈</strong><span class="admin-alert-tag caution">주의 구간 진입</span></div>
+                                <p>측정값: 41°C</p>
+                            </div>
+                            <div class="admin-alert-meta"><time>12:20</time><button type="button"
+                                    onclick="adminSendAlert('최지훈')">알림 발송됨</button></div>
+                        </article>
+                        <article class="admin-alert-item caution">
+                            <div class="admin-alert-icon" aria-hidden="true">⚠️</div>
+                            <div class="admin-alert-content">
+                                <div><strong>정하윤</strong><span class="admin-alert-tag caution">작업 시간 초과</span></div>
+                                <p>측정값: 4h+</p>
+                            </div>
+                            <div class="admin-alert-meta"><time>11:47</time><button type="button"
+                                    onclick="adminSendAlert('정하윤')">휴식 권고</button></div>
+                        </article>
+                        <article class="admin-alert-item caution">
+                            <div class="admin-alert-icon" aria-hidden="true">⚠️</div>
+                            <div class="admin-alert-content">
+                                <div><strong>이서준</strong><span class="admin-alert-tag caution">주의 구간 진입</span></div>
+                                <p>측정값: 40°C</p>
+                            </div>
+                            <div class="admin-alert-meta"><time>10:33</time><button type="button"
+                                    onclick="adminSendAlert('이서준')">알림 발송됨</button></div>
+                        </article>
+                        <article class="admin-alert-item caution">
+                            <div class="admin-alert-icon" aria-hidden="true">⚠️</div>
+                            <div class="admin-alert-content">
+                                <div><strong>임채원</strong><span class="admin-alert-tag caution">주의 구간 진입</span></div>
+                                <p>측정값: 39°C</p>
+                            </div>
+                            <div class="admin-alert-meta"><time>09:15</time><button type="button"
+                                    onclick="adminSendAlert('임채원')">알림 발송됨</button></div>
+                        </article>
+                    </div>
+                </section>
+
+                <!-- 설정 -->
+                <section class="admin-page" data-admin-page="admin-settings">
+                    <div class="admin-settings-grid">
+                        <article class="admin-panel admin-settings-card">
+                            <h2>알림 임계값</h2>
+                            <div class="admin-setting-row"><span>위험 체감온도</span><strong>43°C</strong></div>
+                            <div class="admin-setting-row"><span>주의 체감온도</span><strong>38°C</strong></div>
+                            <div class="admin-setting-row"><span>최대 작업 시간</span><strong>2시간</strong></div>
+                            <div class="admin-setting-row"><span>권장 휴식 시간</span><strong>15분</strong></div>
+                        </article>
+
+                        <article class="admin-panel admin-settings-card">
+                            <h2>알림 채널</h2>
+                            <div class="admin-setting-row"><span>앱 푸시 알림</span><button class="admin-toggle on"
+                                    type="button" aria-pressed="true"
+                                    onclick="toggleAdminSetting(this)"><span></span></button></div>
+                            <div class="admin-setting-row"><span>SMS 알림</span><button class="admin-toggle on"
+                                    type="button" aria-pressed="true"
+                                    onclick="toggleAdminSetting(this)"><span></span></button></div>
+                            <div class="admin-setting-row"><span>이메일 알림</span><button class="admin-toggle" type="button"
+                                    aria-pressed="false" onclick="toggleAdminSetting(this)"><span></span></button></div>
+                            <div class="admin-setting-row"><span>관리자 긴급 콜</span><button class="admin-toggle on"
+                                    type="button" aria-pressed="true"
+                                    onclick="toggleAdminSetting(this)"><span></span></button></div>
+                        </article>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+
+    <!-- 계정 탈퇴 확인 모달 -->
+
+    <div id="deleteAccountModal" class="app-modal hidden" role="dialog" aria-modal="true"
+        aria-labelledby="deleteAccountModalTitle" aria-describedby="deleteAccountModalDescription"
+        onclick="handleDeleteModalBackdrop(event)">
+
+        <div class="app-modal-card">
+            <div class="app-modal-icon" aria-hidden="true">!</div>
+
+            <h2 id="deleteAccountModalTitle">계정을 탈퇴할까요?</h2>
+
+            <p id="deleteAccountModalDescription">
+                저장된 회원정보가 모두 삭제되며 복구할 수 없습니다.
+            </p>
+
+            <div class="app-modal-actions">
+                <button id="cancelDeleteAccountButton" class="app-modal-cancel" type="button"
+                    onclick="closeDeleteAccountModal()">
+                    취소
+                </button>
+
+                <button id="confirmDeleteAccountButton" class="app-modal-danger" type="button"
+                    onclick="deleteAccount()">
+                    탈퇴하기
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- 알림 메시지 -->
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+</body>
+
+</html>
