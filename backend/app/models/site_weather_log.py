@@ -57,7 +57,6 @@ class SiteWeatherLog(Base):
     )
     temperature: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
     humidity: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
-    wind_speed: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
     feels_like_temperature: Mapped[Decimal] = mapped_column(
         Numeric(5, 2), nullable=False
     )
