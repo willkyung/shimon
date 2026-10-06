@@ -38,12 +38,6 @@
 
 ## 3. 시스템 구성 및 처리 흐름
 
-![SHIMON 시스템 아키텍처](<img width="1035" height="540" alt="image" src="https://github.com/user-attachments/assets/43ec8969-6aaa-48ca-a9fa-afa515774743" />
-)
-
-*최종발표 PPT 8쪽의 시스템 구조와 저장소 구현 내용을 바탕으로 재구성했습니다.*
-
-
 ~~~text
 기상청 API + 작업자 프로필 + 작업/휴식 이력
                     │
